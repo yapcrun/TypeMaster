@@ -5,8 +5,33 @@ import subprocess
 from random import choice
 from pynput import keyboard
 
+# TODO: Make this threaded
+# Tray controlls support TESTING
+
+
+# TODO: Test tray support on windows !!
+# if os.name == 'nt':
+if True:
+    import pystray
+    from PIL import Image
+    image = Image.open("COMP_ICON.png")
+    def after_click(icon, item):
+        print(f"Clicked on {item}")
+        if str(item) == "Exit":
+            icon.stop()
+            os._exit(0)
+        elif str(item) == "Pause":
+            print("Pause clicked")
+
+    icon = pystray.Icon("Typemaster", image, "Typemaster", menu=pystray.Menu(
+        pystray.MenuItem("Exit", after_click),
+        pystray.MenuItem("Pause", after_click)
+    ))
+    # icon.run()
+
+    threading.Thread(target=icon.run).start()
+
 # TODO: Display key press stats (in a GUI?)
-# TODO: Make a system tray icon?
 # TODO: Make the exit hotkey more complex
 # TODO: Make play_sound() windows compatible
 # TODO: Make the sounds loaded into memory to minimize disk reads
