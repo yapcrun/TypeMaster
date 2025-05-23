@@ -16,17 +16,22 @@ TypeMaster is a Python-based input tracker for linux that plays sound effects wh
 - `key_log.txt`: File where key press counts are logged.
 
 ## Hotkeys
+
 - **Exit application**: `ctrl + q`
 - **Pause sounds**: `ctrl + l` 
 
 ## Requirements
 
 ### System
+
 - `alsa-utils` to run sounds with aplay
 
 ### Python
+
 - Python 3.6+
 - `pynput` library for keyboard event handling.
+- `pillow` library for loading images
+- `pystray` library for tray functionality
 
 Install python dependencies using:
 

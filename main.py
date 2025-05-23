@@ -6,36 +6,6 @@ from random import choice
 from pynput import keyboard
 
 
-# Tray controlls support TESTING
-# TODO: Test tray support on windows !!
-# TODO: implement & test functionality
-# TODO: Fix AssertionError (I think this happens when the display is disabled)
-try:
-    if True:
-        import pystray
-        from PIL import Image
-        image = Image.open("COMP_ICON.png")
-        def after_click(icon, item):
-            print(f"Clicked on {item}")
-            if str(item) == "Exit":
-                icon.stop()
-                os._exit(0)
-            elif str(item) == "Pause":
-                print("Pause clicked")
-
-        icon = pystray.Icon("Typemaster", image, "Typemaster", menu=pystray.Menu(
-            pystray.MenuItem("Exit", after_click),
-            pystray.MenuItem("Pause", after_click)
-        ))
-        # icon.run()
-
-        threading.Thread(target=icon.run).start()
-except ImportError:
-    print("pystray or pillow not found, tray icon support disabled.")
-except AssertionError:
-        print("AssertionError: Tray icon support disabled.")
-
-
 # TODO: Display key press stats (in a GUI?)
 # TODO: Make the exit hotkey more complex
 # TODO: Make play_sound() windows compatible
@@ -58,6 +28,37 @@ cwd = os.getcwd()
 print(cwd)
 os_type = os.name
 print(os_type)
+
+# Tray controlls support TESTING
+# TODO: Test tray support on windows !!
+# TODO: implement & test functionality
+# TODO: Fix AssertionError (I think this happens when the display is disabled(only on linux?))
+try:
+    if True:
+        import pystray
+        from PIL import Image
+
+        def after_click(icon, item):
+            print(f"Clicked on {item}")
+            if str(item) == "Exit":
+                icon.stop()
+                os._exit(0)
+            elif str(item) == "Pause":
+                print("Pause clicked")
+
+        image = Image.open("COMP_ICON.png")
+        icon = pystray.Icon("Typemaster", image, "Typemaster", menu=pystray.Menu(
+            pystray.MenuItem("Exit", after_click),
+            pystray.MenuItem("Pause", after_click)
+        ))
+
+        threading.Thread(target=icon.run).start()
+
+except ImportError:
+    print("pystray or pillow not found, tray icon support disabled.")
+except AssertionError:
+        print("AssertionError: Tray icon support disabled.")
+
 
 class Sound:
     def __init__(self, sounds = SOUNDS):
@@ -96,7 +97,6 @@ class Sound:
             print(f"arrow sounds: {self.arrow_sounds}")
             print(f"enter sounds: {self.enter_sounds}")
             print(f"backspace sounds: {self.backspace_sounds}")
-
 
     def play_sound(self, key_type = "generic"):
         if not self.play:
@@ -155,12 +155,10 @@ class InputTracker:
                     return
                 elif self.mod_key_pressed and key.char == EXIT_KEY:
                     self.save_keys()
-                    exit(0)
-
+                    os._exit(0)
 
                 if DO_LOGGING: self.key_dict[key.char] = self.key_dict.get(key.char, 0) + 1
                 if DO_PRINT: print(f'Key pressed: {key.char}')
-
 
                 self.sound.ps()
                 
@@ -189,7 +187,7 @@ class InputTracker:
         if time.time() - self.last_save_time > 60:
             if DO_LOGGING: self.save_keys()
             self.last_save_time = time.time()
-                
+
     def on_release(self, key):
         if DEBUG: print(f"Release:{key}")
         try:
