@@ -5,31 +5,36 @@ import subprocess
 from random import choice
 from pynput import keyboard
 
-# TODO: Make this threaded
+
 # Tray controlls support TESTING
-
-
 # TODO: Test tray support on windows !!
-# if os.name == 'nt':
-if True:
-    import pystray
-    from PIL import Image
-    image = Image.open("COMP_ICON.png")
-    def after_click(icon, item):
-        print(f"Clicked on {item}")
-        if str(item) == "Exit":
-            icon.stop()
-            os._exit(0)
-        elif str(item) == "Pause":
-            print("Pause clicked")
+# TODO: implement & test functionality
+# TODO: Fix AssertionError (I think this happens when the display is disabled)
+try:
+    if True:
+        import pystray
+        from PIL import Image
+        image = Image.open("COMP_ICON.png")
+        def after_click(icon, item):
+            print(f"Clicked on {item}")
+            if str(item) == "Exit":
+                icon.stop()
+                os._exit(0)
+            elif str(item) == "Pause":
+                print("Pause clicked")
 
-    icon = pystray.Icon("Typemaster", image, "Typemaster", menu=pystray.Menu(
-        pystray.MenuItem("Exit", after_click),
-        pystray.MenuItem("Pause", after_click)
-    ))
-    # icon.run()
+        icon = pystray.Icon("Typemaster", image, "Typemaster", menu=pystray.Menu(
+            pystray.MenuItem("Exit", after_click),
+            pystray.MenuItem("Pause", after_click)
+        ))
+        # icon.run()
 
-    threading.Thread(target=icon.run).start()
+        threading.Thread(target=icon.run).start()
+except ImportError:
+    print("pystray or pillow not found, tray icon support disabled.")
+except AssertionError:
+        print("AssertionError: Tray icon support disabled.")
+
 
 # TODO: Display key press stats (in a GUI?)
 # TODO: Make the exit hotkey more complex
@@ -229,3 +234,4 @@ with keyboard.Listener(
         os._exit(0)
     except Exception as e:
         print(f"An error occurred: {e}")
+
