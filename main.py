@@ -4,15 +4,15 @@ import threading
 import subprocess
 from random import choice
 from pynput import keyboard
+if os.name == 'nt': import winsound
 
 
 # TODO: Display key press stats (in a GUI?)
 # TODO: Make the exit hotkey more complex
-# TODO: Make play_sound() windows compatible
 # TODO: Make the sounds loaded into memory to minimize disk reads
 
 
-print("Typemaster v0.1.0")
+print(f"{'-'*10}Typemaster v0.1.0{'-'*10}")
 
 SOUNDS = "default"
 DEBUG = False
@@ -114,7 +114,10 @@ class Sound:
         else:
             sound = choice(self.tap_sounds)
         
-        subprocess.run("aplay -q " + sound, cwd=cwd, shell=True)
+        if os.name == 'nt':  # Windows
+            winsound.PlaySound(sound, winsound.SND_FILENAME | winsound.SND_ASYNC)
+        else:  # Linux or other OS
+            subprocess.run("aplay -q " + sound, cwd=cwd, shell=True)
 
     def ps(self, key_type = "generic"):
         if key_type == "special":
