@@ -3,6 +3,7 @@
 TypeMaster is a cross-platform Python-based input tracker that plays sound effects when keys are pressed. It is designed to enhance the typing experience by associating key presses with customizable sound effects.
 
 ## Features
+
 - **Tray Support**: Control functionality through a system tray icon.
 - **Key Sound Effects**: Plays different sound effects for specific keys based on their function.
 - **Customizable Sound Packs**: Supports multiple sound packs stored in the `sounds/` directory.
@@ -18,7 +19,7 @@ TypeMaster is a cross-platform Python-based input tracker that plays sound effec
 ## Hotkeys
 
 - **Exit application**: `ctrl + q`
-- **Pause sounds**: `ctrl + l` 
+- **Pause sounds**: `ctrl + l`
 
 ## Requirements
 
@@ -32,11 +33,15 @@ TypeMaster is a cross-platform Python-based input tracker that plays sound effec
 
 - `Python 3.6+`
 - `pynput` library for keyboard event handling.
-- `pillow` library for loading images
-- `pystray` library for tray functionality
+- `pystray` library for tray functionality.
+- `pillow` library for loading images.
 
 Install python dependencies using:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+## Known Bugs
+
+- Linux tray icon will not work correctly if operating in a venv

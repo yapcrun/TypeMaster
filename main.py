@@ -4,13 +4,14 @@ import threading
 import subprocess
 from random import choice
 from pynput import keyboard
+# Importing winsound only on Windows
 if os.name == 'nt': import winsound
-
+# Ensure the environment variable for pystray backend is set to gtk
+if os.name == 'posix': # BUG: This will not work in a venv
+    os.environ["PYSTRAY_BACKEND"] = "gtk" 
 
 # TODO: Display key press stats (in a GUI?)
 # TODO: Make the exit hotkey more complex
-# TODO: Make the sounds loaded into memory to minimize disk reads
-# TODO: Fix windows audio so sounds can play in parallel
 
 
 print(f"{'-'*10}Typemaster v0.1.0{'-'*10}")
@@ -23,17 +24,14 @@ EXIT_KEY = "q"
 PAUSE_KEY = "l"
 if not DO_LOGGING: print("Logging disabled!!")
 
-# TODO: Test best backend for psytray on linux
-# os.environ["PYSTRAY_BACKEND"] = # appindicator gtk xorg
-
+# Set CWD to access sound paths correctly
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 cwd = os.getcwd()
 print(cwd)
-os_type = os.name
-print(os_type)
-
+print(f"OS: {os.name}")
 
 class Sound:
+    # TODO: load sound into memory to minimize disk reads
     def __init__(self, sounds = SOUNDS):
         self.sounds = sounds
         self.tap_sounds = []
@@ -89,6 +87,7 @@ class Sound:
             sound = choice(self.tap_sounds)
         
         if os.name == 'nt':  # Windows
+            # TODO: Fix windows audio so sounds can play in parallel
             winsound.PlaySound(sound, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
         else:  # Linux or other OS
             subprocess.run("aplay -q " + sound, cwd=cwd, shell=True)
@@ -201,8 +200,6 @@ class InputTracker:
             print(f"Error loading keys: {e}")
 
 
-
-
 input_tracker = InputTracker()
 
 # TODO: Fix AssertionError (I think this happens when the display is disabled(only on linux?))
@@ -231,6 +228,10 @@ except ImportError:
     print("pystray or pillow not found, tray icon support disabled.")
 except AssertionError:
         print("AssertionError: Tray icon support disabled.")
+except Exception as e:
+    print(f"Error starting tray icon: {e}")
+        # icon.stop()
+        # os._exit(0)
 
 
 with keyboard.Listener(
