@@ -10,6 +10,7 @@ if os.name == 'nt': import winsound
 # TODO: Display key press stats (in a GUI?)
 # TODO: Make the exit hotkey more complex
 # TODO: Make the sounds loaded into memory to minimize disk reads
+# TODO: Fix windows audio so sounds can play in parallel
 
 
 print(f"{'-'*10}Typemaster v0.1.0{'-'*10}")
@@ -22,42 +23,14 @@ EXIT_KEY = "q"
 PAUSE_KEY = "l"
 if not DO_LOGGING: print("Logging disabled!!")
 
+# TODO: Test best backend for psytray on linux
+# os.environ["PYSTRAY_BACKEND"] = # appindicator gtk xorg
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 cwd = os.getcwd()
 print(cwd)
 os_type = os.name
 print(os_type)
-
-# Tray controlls support TESTING
-# TODO: Test tray support on windows !!
-# TODO: implement & test functionality
-# TODO: Fix AssertionError (I think this happens when the display is disabled(only on linux?))
-try:
-    if True:
-        import pystray
-        from PIL import Image
-
-        def after_click(icon, item):
-            print(f"Clicked on {item}")
-            if str(item) == "Exit":
-                icon.stop()
-                os._exit(0)
-            elif str(item) == "Pause":
-                print("Pause clicked")
-
-        image = Image.open("COMP_ICON.png")
-        icon = pystray.Icon("Typemaster", image, "Typemaster", menu=pystray.Menu(
-            pystray.MenuItem("Exit", after_click),
-            pystray.MenuItem("Pause", after_click)
-        ))
-
-        threading.Thread(target=icon.run).start()
-
-except ImportError:
-    print("pystray or pillow not found, tray icon support disabled.")
-except AssertionError:
-        print("AssertionError: Tray icon support disabled.")
 
 
 class Sound:
@@ -98,6 +71,7 @@ class Sound:
             print(f"enter sounds: {self.enter_sounds}")
             print(f"backspace sounds: {self.backspace_sounds}")
 
+
     def play_sound(self, key_type = "generic"):
         if not self.play:
             return
@@ -115,7 +89,7 @@ class Sound:
             sound = choice(self.tap_sounds)
         
         if os.name == 'nt':  # Windows
-            winsound.PlaySound(sound, winsound.SND_FILENAME | winsound.SND_ASYNC)
+            winsound.PlaySound(sound, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
         else:  # Linux or other OS
             subprocess.run("aplay -q " + sound, cwd=cwd, shell=True)
 
@@ -133,6 +107,9 @@ class Sound:
         else:
             threading.Thread(target=self.play_sound).start()
 
+    def toggle_sound(self):
+        self.play = not self.play
+
 
 class InputTracker:
     def __init__(self):
@@ -142,6 +119,8 @@ class InputTracker:
         self.last_save_time = time.time()
         self.mod_key_pressed = False
 
+    def toggle_sound(self):
+        self.sound.toggle_sound()
         
     def on_press(self, key):
         if DEBUG: print(key.__dict__)
@@ -223,7 +202,37 @@ class InputTracker:
 
 
 
+
 input_tracker = InputTracker()
+
+# TODO: Fix AssertionError (I think this happens when the display is disabled(only on linux?))
+try:
+    import pystray
+    from PIL import Image
+    
+    def after_click(icon, item):
+        print(f"Clicked on {item}")
+        if str(item) == "Toggle Audio":
+            input_tracker.toggle_sound()
+            print("Audio Toggled")
+        elif str(item) == "Exit":
+            icon.stop()
+            os._exit(0)
+
+    image = Image.open("COMP_ICON.png")
+    icon = pystray.Icon("TypeMaster", image, "TypeMaster", menu=pystray.Menu(
+        pystray.MenuItem("Toggle Audio", after_click),
+        pystray.MenuItem("Exit", after_click)
+    ))
+
+    threading.Thread(target=icon.run).start()
+
+except ImportError:
+    print("pystray or pillow not found, tray icon support disabled.")
+except AssertionError:
+        print("AssertionError: Tray icon support disabled.")
+
+
 with keyboard.Listener(
         on_press=input_tracker.on_press,
         on_release=input_tracker.on_release

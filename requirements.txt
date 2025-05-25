@@ -1,4 +1,3 @@
 pynput
 pystray
 pillow
-winsound
