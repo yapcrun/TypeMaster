@@ -29,6 +29,18 @@ TypeMaster is a cross-platform Python-based input tracker that plays sound effec
 
 - `alsa-utils` to run sounds with aplay
 
+##### If PyQt6 fails to load on liunux
+
+- `libxcb-xinerama0` For PyQt6
+- `libxcb-xinerama0-dev` For PyQt6
+- `libxcb-cursor0`: For PyQt6
+
+Install system dependencies using:
+
+```bash
+sudo apt-get install libxcb-xinerama0 libxcb-xinerama0-dev libxcb-cursor0
+```
+
 ### Python
 
 - `Python 3.6+`

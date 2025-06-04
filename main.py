@@ -1,3 +1,4 @@
+import tmgui
 import os
 import time
 import threading
@@ -7,12 +8,12 @@ from pynput import keyboard
 # Importing winsound only on Windows
 if os.name == 'nt': import winsound
 # Ensure the environment variable for pystray backend is set to gtk
-if os.name == 'posix': # BUG: This will not work in a venv
-    os.environ["PYSTRAY_BACKEND"] = "gtk" 
+if os.name == 'posix': 
+    os.environ["PYSTRAY_BACKEND"] = "gtk" # BUG: This will not work in a venv
 
-# TODO: Display key press stats (in a GUI?)
+# TODO: Make this script sub to the GUI
 # TODO: Make the exit hotkey more complex
-
+# TODO: Create a method to calculate apm
 
 print(f"{'-'*10}Typemaster v0.1.0{'-'*10}")
 
@@ -109,7 +110,6 @@ class Sound:
     def toggle_sound(self):
         self.play = not self.play
 
-
 class InputTracker:
     def __init__(self):
         self.sound = Sound()
@@ -199,8 +199,8 @@ class InputTracker:
         except Exception as e:
             print(f"Error loading keys: {e}")
 
-
 input_tracker = InputTracker()
+
 
 # TODO: Fix AssertionError (I think this happens when the display is disabled(only on linux?))
 try:
@@ -218,6 +218,7 @@ try:
 
     image = Image.open("COMP_ICON.png")
     icon = pystray.Icon("TypeMaster", image, "TypeMaster", menu=pystray.Menu(
+        # pystray.MenuItem("Show GUI", ),
         pystray.MenuItem("Toggle Audio", after_click),
         pystray.MenuItem("Exit", after_click)
     ))
