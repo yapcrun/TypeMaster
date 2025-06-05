@@ -4,8 +4,6 @@ import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import sounds
 
-# TODO: Add a WPM counter
-
 
 class KeyHandler:
     '''
@@ -21,7 +19,7 @@ class KeyHandler:
         self.last_save = time.time()
 
     def on_press(self, key):
-
+        # BUG: pynput doesn't like the media_stop key (does not crash the program)
         # determine key type
         try: 
             if hasattr(key, "char") and key.char is not None: # is a alpha numeric key
@@ -34,13 +32,12 @@ class KeyHandler:
         actual_key = convert_keys(actual_key) # Convert relevent keys to emoji form
 
         # Logic to prevent registering heald keys multiple times
-        # print(f"delta: {time.time() - self.last_press[1]}")
         if actual_key == self.last_press[0] and time.time() - self.last_press[1] < 0.09:
             self.last_press = [actual_key, time.time()]
             return {"apm": self.apm,
                     "stats": self.key_stats}
 
-        if actual_key == ":": actual_key = "semicolon" # To prevent parsing issues # FIXME
+        if actual_key == ":": actual_key = "semicolon" # To prevent parsing issues 
         self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
         self.update_apm()
         self.last_press = [actual_key, time.time()]
@@ -51,7 +48,7 @@ class KeyHandler:
 
     def get_apm(self):
         return self.apm
-    
+
     def get_key_stats(self):
         return self.key_stats
 
@@ -76,7 +73,6 @@ class KeyHandler:
 
         self.apm = len(self.apm_times) # set the new apm value
         return self.apm
-
 
     def logfile(self, mode="load"):
         '''
@@ -103,7 +99,6 @@ class KeyHandler:
             except Exception as e:
                 print(f"Error saving keys: {e}")
 
-
     def sound(self, key_name):
         '''
         
@@ -121,6 +116,7 @@ class KeyHandler:
             self.sounds.ps("enter")
         else:
             self.sounds.ps("special")
+
 
 def sort_dict_by_value(d):
     """
