@@ -34,7 +34,6 @@ class TrackerThread(QThread):
         # print(f"data: {data}")
         apm = data["apm"]
         stats = data["stats"]
-        print(f"apm: {apm}")
         self.apm_signal.emit(apm)
         self.stats_list_signal.emit(stats)
         self.need_update = True

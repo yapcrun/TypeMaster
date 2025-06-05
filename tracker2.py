@@ -112,7 +112,7 @@ class KeyHandler:
             self.sounds.ps("space")
         elif key_name in ["backspace", "🗑️", "🕳️"]:
             self.sounds.ps("backspace")
-        elif key_name == ["enter", "↩️"]:
+        elif key_name in ["enter", "↩️"]:
             self.sounds.ps("enter")
         else:
             self.sounds.ps("special")
