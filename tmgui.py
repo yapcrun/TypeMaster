@@ -1,4 +1,4 @@
-from PyQt6.QtCore import QSize, Qt, QThread, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QMainWindow, QLabel, QVBoxLayout, QLineEdit, QHBoxLayout, QListWidget
 from PyQt6.QtGui import QIcon
 import sys
@@ -7,26 +7,43 @@ from time import sleep
 import os
 import tracker2
 
-
-
+# TODO: Implement the tray functionality w/ qt6 (or old method)
+# TODO: Implement hotkey functionality. 
+# TODO: Make the list fancy
+# TODO: Add a selector for sound packs
 
 class TrackerThread(QThread):
     apm_signal = pyqtSignal(int)
+    stats_list_signal = pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
         self.running = True
         self.tracker = tracker2.KeyHandler()
+        self.need_update = False
 
     def on_press(self, key):
-        print("AAAAAAAAAAAAA")
         data = self.tracker.on_press(key)
-        print(f"data: {data}")
+        # print(f"data: {data}")
         apm = data["apm"]
+        stats = data["stats"]
         print(f"apm: {apm}")
         self.apm_signal.emit(apm)
+        self.stats_list_signal.emit(stats)
+        self.need_update = True
+
+    def update_apm(self):
+        apm = self.tracker.update_apm(False)
+        self.apm_signal.emit(apm)
+
+    def save(self):
+        if self.need_update == False: return
+        self.tracker.logfile("save")
+        self.need_update = False
+
 
     def run(self):
+        self.stats_list_signal.emit(self.tracker.get_key_stats())
         print("Tracker thread started.")
         while self.running:
             with keyboard.Listener(
@@ -41,23 +58,21 @@ class TrackerThread(QThread):
                 except Exception as e:
                     print(f"An error occurred: {e}")
 
-            # self.update_signal.emit(apm, key_stats) # figure out signal emission
-
-
     def stop(self):
         self.running = False
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("TypeMaster")
+        self.setGeometry(100, 100, 300, 700)
+        self.setWindowIcon(QIcon("COMP_ICON.png"))
 
         self.tracker_thread = TrackerThread()
         self.tracker_thread.apm_signal.connect(self.update_apm)
+        self.tracker_thread.stats_list_signal.connect(self.populate_list)
         self.tracker_thread.start()
 
-        self.setWindowTitle("TypeMaster")
-        self.setGeometry(100, 100, 300, 200)
-        self.setWindowIcon(QIcon("COMP_ICON.png"))
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -75,23 +90,25 @@ class MainWindow(QMainWindow):
         self.key_stats = QListWidget()
         self.layout.addWidget(self.key_stats)
 
-        self.button = QPushButton("Submit")
-        self.button.clicked.connect(self.on_submit)
-        self.layout.addWidget(self.button)
+        # --- QTimer setup ---
+        self.apm_timer = QTimer(self)
+        self.apm_timer.timeout.connect(self.tracker_thread.update_apm)
+        self.apm_timer.start(1000) 
 
-    def on_submit(self):
-        self.update_apm(100)
-        self.update_key_stats({"A": 5, "B": 3, "C": 2})
+        self.save_timer = QTimer(self)
+        self.save_timer.timeout.connect(self.tracker_thread.save)
+        self.save_timer.start(1000 * 60) # Save every 1m
+
 
     def update_apm(self, apm):
         # TODO: Change text color based on apm
-        print("UPDATE APM")
-        self.label.setText(f"APM: {apm}")
+        self.label.setText(f"APM\n{apm}")
 
-    def update_key_stats(self, key_stats: dict):
+
+    def populate_list(self, data: dict):
         self.key_stats.clear()
-        for key, count in key_stats.items():
-            self.key_stats.addItem(f"{key}: {count}")
+        for key, taps in data.items():
+            self.key_stats.addItem(f"{key}: {taps}")
 
 
 if __name__ == "__main__":    

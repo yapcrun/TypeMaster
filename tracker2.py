@@ -1,15 +1,11 @@
 # from pynput import keyboard
-import os
 import time
-# TODO: Make this script sub to the GUI
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+import sounds
+
 # TODO: Add a WPM counter
-# TODO: Handle keys repeating (a key heald down)
 
-
-groups = {"space": ['space'],
-          "arrow": ['up', 'down', 'left', 'right'],
-          "backspace": ['backspace'],
-          "enter": ['enter']}
 
 class KeyHandler:
     '''
@@ -20,37 +16,52 @@ class KeyHandler:
         self.logfile("load")
         self.apm = 0
         self.apm_times = []
+        self.sounds = sounds.Sound()
+        self.last_press = ["a", 0]
+        self.last_save = time.time()
 
     def on_press(self, key):
-        
-        self.update_apm()
 
         # determine key type
-        try: # BUG: if key is ':' it will break the parsing when loading the key stats
+        try: 
             if hasattr(key, "char") and key.char is not None: # is a alpha numeric key
-                # Make sure char is lowercase to avoid tracking same char twice
-                self.key_stats[key.char.lower()] = self.key_stats.get(key.char.lower(), 0) + 1
                 actual_key = key.char.lower()
-            
             elif hasattr(key, "name"): # is mod, arrow, etc.
-                self.key_stats[str(key.name)] = self.key_stats.get(str(key.name), 0) + 1
                 actual_key = key.name.lower()
-
         except Exception as e:
             print("Failed to determine key type\n\t{e}")
 
+        actual_key = convert_keys(actual_key) # Convert relevent keys to emoji form
+
+        # Logic to prevent registering heald keys multiple times
+        # print(f"delta: {time.time() - self.last_press[1]}")
+        if actual_key == self.last_press[0] and time.time() - self.last_press[1] < 0.09:
+            self.last_press = [actual_key, time.time()]
+            return {"apm": self.apm,
+                    "stats": self.key_stats}
+
+        if actual_key == ":": actual_key = "semicolon" # To prevent parsing issues # FIXME
+        self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
+        self.update_apm()
+        self.last_press = [actual_key, time.time()]
+        self.sound(actual_key)
         print(f"Tracker: Pressed {actual_key}")
-        return {"apm": self.apm}
+        return {"apm": self.apm,
+                "stats": sort_dict_by_value(self.key_stats)}
 
     def get_apm(self):
         return self.apm
+    
+    def get_key_stats(self):
+        return self.key_stats
 
-    def update_apm(self):
+    def update_apm(self, is_increasing = True):
         '''
         Method for calculating APM
         '''
         now = time.time()
-        self.apm_times.append(now) # add the current time to the list
+
+        if is_increasing: self.apm_times.append(now) # add the current time to the list
         to_del = 0
         
         for i in self.apm_times: # loop thru apm_times to find & remove old entries
@@ -86,15 +97,63 @@ class KeyHandler:
         elif mode == "save": # Save the key stats
             try:
                 with open('key_log.txt', 'w') as f:
-                    for key, count in self.key_stats.items():
+                    for key, count in sort_dict_by_value(self.key_stats).items():
                         f.write(f'{key}: {count}\n')
                 print("Keys saved to key_log.txt")
             except Exception as e:
                 print(f"Error saving keys: {e}")
 
 
+    def sound(self, key_name):
+        '''
+        
+        '''
+        # TODO: Find a better way to make this logic better
+        if len(key_name) == 1:
+            self.sounds.ps("generic")
+        elif key_name in ['up', 'down', 'left', 'right', "➡️", "⬅️","⬇️", "⬆️"]:
+            self.sounds.ps("arrow")
+        elif key_name in ["space", "☄️"]:
+            self.sounds.ps("space")
+        elif key_name in ["backspace", "🗑️", "🕳️"]:
+            self.sounds.ps("backspace")
+        elif key_name == ["enter", "↩️"]:
+            self.sounds.ps("enter")
+        else:
+            self.sounds.ps("special")
+
+def sort_dict_by_value(d):
+    """
+    Sort a dictionary by its integer values in descending order.
+    Returns a new sorted dictionary.
+    """
+    return dict(sorted(
+        ((k, v) for k, v in d.items() if isinstance(v, int)),
+        key=lambda item: item[1],
+        reverse=True
+    ))
+
+def convert_keys(key):
+    # TODO: Add the numeric keys (0-9)
+    if key == "backspace": return "🗑️"
+    elif key == "delete": return "🕳️"
+    elif key == "enter": return "↩️"
+    elif key == "up": return "⬆️"
+    elif key == "down": return "⬇️"
+    elif key == "left": return "⬅️"
+    elif key == "right": return "➡️"
+    elif key == "media_volume_down": return "🔉"
+    elif key == "media_volume_up": return "🔊"
+    elif key == "media_play_pause": return "⏯️"
+    elif key == "media_next": return "⏭️"
+    elif key == "media_previous": return "⏮️"
+    elif key == "caps_lock": return "🔒"
+    elif key == "space": return "☄️"
+    # elif key == "shift": return 
+    # elif key == "shift_r": return
+    # elif key == "ctrl": return
+    # elif key == "ctrl_r": return
+    elif key == "cmd": return "🪟"
+    else: return key
 if __name__ == "__main__":
-    x = KeyHandler()
-    while True:
-        time.sleep(0.5)
-        print(x.update_apm())
+    pass

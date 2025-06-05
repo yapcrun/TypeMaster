@@ -110,6 +110,8 @@ class Sound:
     def toggle_sound(self):
         self.play = not self.play
 
+
+
 class InputTracker:
     def __init__(self):
         self.sound = Sound()
