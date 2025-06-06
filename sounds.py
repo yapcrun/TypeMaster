@@ -11,8 +11,7 @@ if DEBUG: print(f"sounds.py cwd: {cwd}")
 
 class Sound:
     # TODO: load sound into memory to minimize disk reads
-    def __init__(self, sounds = SOUNDS):
-        self.sounds = sounds
+    def __init__(self):
         self.tap_sounds = []
         self.special_sounds = []
         self.arrow_sounds = []
@@ -20,7 +19,18 @@ class Sound:
         self.backspace_sounds = []
         self.space_sounds = []
         self.play = True
+        self.load_sounds("default")
+
+    def load_sounds(self, sound_pack):
+        self.sounds = sound_pack
         self.sound_dir = cwd + "/sounds/" + self.sounds
+        # Empty sounds so we don't load multiple packs
+        self.tap_sounds = []
+        self.special_sounds = []
+        self.arrow_sounds = []
+        self.enter_sounds = []
+        self.backspace_sounds = []
+        self.space_sounds = []
 
         for file in os.listdir(self.sound_dir + "/tap"):
             if file.endswith(".wav"):

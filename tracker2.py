@@ -15,7 +15,7 @@ class KeyHandler:
         self.apm = 0
         self.apm_times = []
         self.sounds = sounds.Sound()
-        self.last_press = ["a", 0]
+        self.last_press = ["*", 0]
         self.last_save = time.time()
 
     def on_press(self, key):
@@ -35,7 +35,8 @@ class KeyHandler:
         if actual_key == self.last_press[0] and time.time() - self.last_press[1] < 0.09:
             self.last_press = [actual_key, time.time()]
             return {"apm": self.apm,
-                    "stats": self.key_stats}
+                    "stats": self.key_stats,
+                    "last_key": actual_key}
 
         if actual_key == ":": actual_key = "semicolon" # To prevent parsing issues 
         self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
@@ -44,7 +45,8 @@ class KeyHandler:
         self.sound(actual_key)
         print(f"Tracker: Pressed {actual_key}")
         return {"apm": self.apm,
-                "stats": sort_dict_by_value(self.key_stats)}
+                "stats": sort_dict_by_value(self.key_stats),
+                "last_key": actual_key}
 
     def get_apm(self):
         return self.apm
