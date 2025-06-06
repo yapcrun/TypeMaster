@@ -7,6 +7,9 @@ from random import choice
 import os
 import tracker2
 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+
 # TODO: Test on Windows
 # TODO: Implement the tray functionality w/ qt6 (or old method)
 # TODO: Implement hotkey functionality. 
@@ -19,6 +22,7 @@ import tracker2
 # TODO: Rename file extention to pyw
 # TODO: Make the selected sound pack persistant
 # TODO: get argv and handle a --no-gui flag
+# TODO: Don't save emojis in the stats list (breaks windows saving) | Maybe use a library like emoji to convert them
 
 class TrackerThread(QThread):
     apm_signal = pyqtSignal(int)
