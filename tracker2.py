@@ -4,6 +4,8 @@ import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import sounds
 
+# BUG: [WINDOWS] when pressing a modifier key and a normal key at the same time, the pressed character becomes a non-standard symbol character
+# EG: pressing "shift + c" results in " ♥" 
 
 class KeyHandler:
     '''
@@ -29,7 +31,7 @@ class KeyHandler:
         except Exception as e:
             print("Failed to determine key type\n\t{e}")
 
-        actual_key = convert_keys(actual_key) # Convert relevent keys to emoji form
+        # actual_key = convert_keys(actual_key) # Convert relevent keys to emoji form
 
         # Logic to prevent registering heald keys multiple times
         if actual_key == self.last_press[0] and time.time() - self.last_press[1] < 0.09:
@@ -39,6 +41,7 @@ class KeyHandler:
                     "last_key": actual_key}
 
         if actual_key == ":": actual_key = "semicolon" # To prevent parsing issues 
+
         self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
         self.update_apm()
         self.last_press = [actual_key, time.time()]
