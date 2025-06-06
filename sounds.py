@@ -2,6 +2,7 @@ import os
 from random import choice
 import threading
 import subprocess
+if os.name == 'nt': import winsound  # Only available on Windows
 
 
 DEBUG = True
