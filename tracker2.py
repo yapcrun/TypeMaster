@@ -134,27 +134,7 @@ def sort_dict_by_value(d):
         reverse=True
     ))
 
-def convert_keys(key):
-    # TODO: Add the numeric keys (0-9)
-    if key == "backspace": return "🗑️"
-    elif key == "delete": return "🕳️"
-    elif key == "enter": return "↩️"
-    elif key == "up": return "⬆️"
-    elif key == "down": return "⬇️"
-    elif key == "left": return "⬅️"
-    elif key == "right": return "➡️"
-    elif key == "media_volume_down": return "🔉"
-    elif key == "media_volume_up": return "🔊"
-    elif key == "media_play_pause": return "⏯️"
-    elif key == "media_next": return "⏭️"
-    elif key == "media_previous": return "⏮️"
-    elif key == "caps_lock": return "🔒"
-    elif key == "space": return "☄️"
-    # elif key == "shift": return 
-    # elif key == "shift_r": return
-    # elif key == "ctrl": return
-    # elif key == "ctrl_r": return
-    elif key == "cmd": return "🪟"
-    else: return key
+
+
 if __name__ == "__main__":
     pass
