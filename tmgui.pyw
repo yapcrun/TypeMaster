@@ -1,28 +1,29 @@
-from PyQt6.QtCore import QSize, Qt, QThread, pyqtSignal, QTimer
-from PyQt6.QtWidgets import QComboBox, QApplication, QWidget, QPushButton, QMainWindow, QLabel, QVBoxLayout, QLineEdit, QHBoxLayout, QListWidget, QCheckBox
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt6.QtWidgets import QComboBox, QApplication, QWidget, QPushButton, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QListWidget, QCheckBox
 from PyQt6.QtGui import QIcon
 import sys
 from pynput import keyboard
-from random import choice
+from random import choice, randint
 import os
 import tracker2
+import config
 
+# Set cwd to make sure paths are correct
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+DO_EMOJI = True # Enable emoji output
 
 # TODO: Test on Windows
 # TODO: Implement the tray functionality w/ qt6 (or old method)
 # TODO: Implement hotkey functionality. 
 # TODO: Make the list fancy
-# TODO: Add another default sound pack
 # TODO: Update README
 # TODO: Add a WPM counter
 # TODO: Comment and add definitions to functions/methods
 # TODO: research graph support (https://www.pyqtgraph.org/)
-# TODO: Rename file extention to pyw
-# TODO: Make the selected sound pack persistant
 # TODO: get argv and handle a --no-gui flag
-# TODO: Don't save emojis in the stats list (breaks windows saving) | Maybe use a library like emoji to convert them
 
 class TrackerThread(QThread):
+    # Signals for gui updates
     apm_signal = pyqtSignal(int)
     stats_list_signal = pyqtSignal(dict)
     last_key_signal = pyqtSignal(str)
@@ -31,11 +32,17 @@ class TrackerThread(QThread):
         super().__init__()
         self.running = True
         self.tracker = tracker2.KeyHandler()
-        self.need_update = False
+        self.need_update = False # Is there new data to save?
+
+        # TODO: Handle the case where the default sound pack is missing
+        self.pack = config.load_config()
+        if self.pack in os.listdir("sounds"):
+            self.change_sounds(self.pack)
+        else:
+            config.load_config(reset=True)
 
     def on_press(self, key):
         data = self.tracker.on_press(key)
-        # print(f"data: {data}")
         apm = data["apm"]
         stats = data["stats"]
         last_key = data["last_key"]
@@ -55,6 +62,7 @@ class TrackerThread(QThread):
 
     def change_sounds(self, pack: str):
         self.tracker.sounds.load_sounds(pack)
+        config.save_config(pack)
 
     def run(self):
         self.stats_list_signal.emit(self.tracker.get_key_stats())
@@ -79,6 +87,7 @@ class TrackerThread(QThread):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.last_chars = ['*']*16 # List for hist_label 
         # Main window setup
         self.setWindowTitle("TypeMaster")
         self.setGeometry(100, 100, 300, 700)
@@ -114,8 +123,8 @@ class MainWindow(QMainWindow):
         self.sound_pack_combo = QComboBox()
         sounds_dir = os.path.join(os.path.dirname(__file__), "sounds")
         items = [name for name in os.listdir(sounds_dir) if os.path.isdir(os.path.join(sounds_dir, name))]
-        print(items)
         self.sound_pack_combo.addItems(items)
+        self.sound_pack_combo.setCurrentIndex(items.index(self.tracker_thread.pack))
         self.sound_pack_combo.currentTextChanged.connect(self.on_sound_pack_changed)
         self.controls_layout.addWidget(self.sound_pack_combo, 1)
         # AOT Toggle
@@ -132,6 +141,8 @@ class MainWindow(QMainWindow):
         self.hist_label = QLabel()
         self.hist_label.setText("************"*3)
         self.hist_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # TODO: figure out a better way to align this element so text doesn't overflow and stretch the window
+        self.hist_label.setMaximumWidth(250)
         self.layout.addWidget(self.hist_label)
 
         # --- QTimer setup ---
@@ -160,7 +171,7 @@ class MainWindow(QMainWindow):
     def populate_list(self, data: dict):
         self.key_stats.clear()
         for key, taps in data.items():
-            self.key_stats.addItem(f"{key}: {taps}")
+            self.key_stats.addItem(f"{convert_keys(key)}: {taps}")
 
     def toggle_mute(self):
         self.tracker_thread.tracker.sounds.toggle_sound()
@@ -174,11 +185,45 @@ class MainWindow(QMainWindow):
         self.show()
 
     def update_hist_label(self, text):
-        if len(text) > 1: return
-        txt = self.hist_label.text()[1:]
-        self.hist_label.setText(txt + text)
-        color = choice(["red", "blue", "green", "yellow"])
+        self.last_chars.append(text)
+        self.last_chars.pop(0)
+        set_text = ""
+        for i in self.last_chars:
+            set_text = set_text+convert_keys(i)
+        self.hist_label.setText(set_text)
+
+        color = f"#{hex(randint(16,255))[2:]}{hex(randint(16,255))[2:]}{hex(randint(16,255))[2:]}"
         self.hist_label.setStyleSheet(f"color: {color}")
+
+
+def convert_keys(key):
+    '''
+    Function to convert keys to an emoji representation to coolness
+    '''
+    if DO_EMOJI:
+        # TODO: Add the numeric keys (0-9)
+        if key == "backspace": return "🗑️"
+        elif key == "delete": return "🕳️"
+        elif key == "enter": return "↩️"
+        elif key == "up": return "⬆️"
+        elif key == "down": return "⬇️"
+        elif key == "left": return "⬅️"
+        elif key == "right": return "➡️"
+        elif key == "media_volume_down": return "🔉"
+        elif key == "media_volume_up": return "🔊"
+        elif key == "media_play_pause": return "⏯️"
+        elif key == "media_next": return "⏭️"
+        elif key == "media_previous": return "⏮️"
+        elif key == "caps_lock": return "🔒"
+        elif key == "space": return "☄️"
+        # elif key == "shift": return 
+        # elif key == "shift_r": return
+        # elif key == "ctrl": return
+        # elif key == "ctrl_r": return
+        elif key == "cmd": return "🪟"
+        else: return key
+
+    else: return key
 
 
 if __name__ == "__main__":    

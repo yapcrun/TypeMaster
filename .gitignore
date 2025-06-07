@@ -3,3 +3,4 @@ key_log.txt
 .venv/
 nohup.out
 __pycache__/
+.config
