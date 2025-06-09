@@ -8,11 +8,13 @@ import os
 import tracker2
 import config
 
+
 # Set cwd to make sure paths are correct
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 DO_EMOJI = True # Enable emoji output
 
 # TODO: Test on Windows
+# TODO: Figure out new sound emission method.
 # TODO: Implement the tray functionality w/ qt6 (or old method)
 # TODO: Implement hotkey functionality. 
 # TODO: Make the list fancy
@@ -21,6 +23,49 @@ DO_EMOJI = True # Enable emoji output
 # TODO: Comment and add definitions to functions/methods
 # TODO: research graph support (https://www.pyqtgraph.org/)
 # TODO: get argv and handle a --no-gui flag
+
+
+class TrayThread(QThread):
+    toggle_audio_signal = pyqtSignal()
+    def __init__(self):
+        super().__init__()
+        self.success = False
+        try:
+            import pystray
+            from PIL import Image
+            self.running = True
+            image = Image.open("COMP_ICON.png")
+            self.icon = pystray.Icon("TypeMaster", image, "TypeMaster", menu=pystray.Menu(
+                # pystray.MenuItem("Show GUI", ),
+                pystray.MenuItem("Toggle Audio", self.after_click),
+                pystray.MenuItem("Exit", self.after_click)
+            ))
+            self.success = True
+        except ImportError:
+            print("pystray or pillow not found, tray icon support disabled.")
+        except AssertionError:
+                print("AssertionError: Tray icon support disabled.")
+        except Exception as e:
+            print(f"Error starting tray icon: {e}")
+                # icon.stop()
+                # os._exit(0)
+    
+        
+    def after_click(self, _icon, item):
+        print(f"ITEM: {item}\nTYPE: {type(item)}")
+        item = str(item)  # Convert item to string for comparison
+        if item == "Toggle Audio":
+            print("Audio Toggled")
+            self.toggle_audio_signal.emit()
+        elif item == "Exit":
+            os._exit(0)
+            pass
+        
+        
+
+    def run(self):
+        if self.success: # if pystray loaded successfully
+            self.icon.run()
 
 class TrackerThread(QThread):
     # Signals for gui updates
@@ -98,6 +143,10 @@ class MainWindow(QMainWindow):
         self.tracker_thread.stats_list_signal.connect(self.populate_list)
         self.tracker_thread.last_key_signal.connect(self.update_hist_label)
         self.tracker_thread.start()
+        # Tray Thread Setup
+        self.tray_thread = TrayThread()
+        self.tray_thread.toggle_audio_signal.connect(self.toggle_mute)
+        self.tray_thread.start()
         # Main Widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -161,6 +210,7 @@ class MainWindow(QMainWindow):
     def update_apm(self, apm):
         self.apm_label.setText(f"{apm}")
         # Set text color & size based on apm
+        # TODO: Make this change linearly from rgb(0,255,0) to rgb(255,0,0) so max apm is 255
         if apm in range(0,89):
             self.apm_label.setStyleSheet("color: green; font-size: 24px;")
         elif apm in range(90, 174):
@@ -174,7 +224,10 @@ class MainWindow(QMainWindow):
             self.key_stats.addItem(f"{convert_keys(key)}: {taps}")
 
     def toggle_mute(self):
+        print("Toggling sound")
         self.tracker_thread.tracker.sounds.toggle_sound()
+        is_muted = not self.tracker_thread.tracker.sounds.play # Get the current mute state
+        self.mute_toggle.setChecked(is_muted) # Update the checkbox state
 
     def toggle_always_on_top(self):
         flags = self.windowFlags()
@@ -194,6 +247,8 @@ class MainWindow(QMainWindow):
 
         color = f"#{hex(randint(16,255))[2:]}{hex(randint(16,255))[2:]}{hex(randint(16,255))[2:]}"
         self.hist_label.setStyleSheet(f"color: {color}")
+
+
 
 
 def convert_keys(key):
