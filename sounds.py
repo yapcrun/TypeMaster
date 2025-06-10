@@ -5,7 +5,7 @@ import subprocess
 if os.name == 'nt': import winsound  # Only available on Windows
 
 
-DEBUG = True
+DEBUG = False
 SOUNDS = "default"
 cwd = os.getcwd()
 if DEBUG: print(f"sounds.py cwd: {cwd}")
