@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import QComboBox, QApplication, QWidget, QPushButton, QMain
 from PyQt6.QtGui import QIcon
 import sys
 from pynput import keyboard
-from random import choice, randint
+from random import randint
 import os
 import tracker2
 import config
@@ -11,11 +11,12 @@ import config
 
 # Set cwd to make sure paths are correct
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 DO_EMOJI = True # Enable emoji output
 
 # TODO: Test on Windows
 # TODO: Figure out new sound emission method.
-# TODO: Implement the tray functionality w/ qt6 (or old method)
+# BUG: Figure out why sounds stop then play all @ once on linux. (fix w/ above todo?)
 # TODO: Implement hotkey functionality. 
 # TODO: Make the list fancy
 # TODO: Update README
@@ -26,7 +27,12 @@ DO_EMOJI = True # Enable emoji output
 
 
 class TrayThread(QThread):
+    '''
+    QThread object that creats a pystray menu to interface with the main gui window
+    '''
+    # TODO: Make an exit signal and save stats on exit from main thread.
     toggle_audio_signal = pyqtSignal()
+    show_window_signal = pyqtSignal()
     def __init__(self):
         super().__init__()
         self.success = False
@@ -36,7 +42,7 @@ class TrayThread(QThread):
             self.running = True
             image = Image.open("COMP_ICON.png")
             self.icon = pystray.Icon("TypeMaster", image, "TypeMaster", menu=pystray.Menu(
-                # pystray.MenuItem("Show GUI", ),
+                pystray.MenuItem("Show GUI", self.after_click),
                 pystray.MenuItem("Toggle Audio", self.after_click),
                 pystray.MenuItem("Exit", self.after_click)
             ))
@@ -46,33 +52,31 @@ class TrayThread(QThread):
         except AssertionError:
                 print("AssertionError: Tray icon support disabled.")
         except Exception as e:
-            print(f"Error starting tray icon: {e}")
+            print(f"Error starting tray icon: {e}\nTray icon support disabled.")
                 # icon.stop()
                 # os._exit(0)
-    
-        
+
     def after_click(self, _icon, item):
-        print(f"ITEM: {item}\nTYPE: {type(item)}")
         item = str(item)  # Convert item to string for comparison
         if item == "Toggle Audio":
             print("Audio Toggled")
             self.toggle_audio_signal.emit()
         elif item == "Exit":
             os._exit(0)
-            pass
-        
-        
+        elif item == "Show GUI":
+            self.show_window_signal.emit()
 
     def run(self):
         if self.success: # if pystray loaded successfully
             self.icon.run()
 
 class TrackerThread(QThread):
-    # Signals for gui updates
+    '''
+    QThread object that runs the keyboard event listener, plays audio and returns data relevent to the gui
+    '''
     apm_signal = pyqtSignal(int)
     stats_list_signal = pyqtSignal(dict)
     last_key_signal = pyqtSignal(str)
-
     def __init__(self):
         super().__init__()
         self.running = True
@@ -130,6 +134,9 @@ class TrackerThread(QThread):
 
 
 class MainWindow(QMainWindow):
+    '''
+    TypeMaster main gui window.
+    '''
     def __init__(self):
         super().__init__()
         self.last_chars = ['*']*16 # List for hist_label 
@@ -146,6 +153,7 @@ class MainWindow(QMainWindow):
         # Tray Thread Setup
         self.tray_thread = TrayThread()
         self.tray_thread.toggle_audio_signal.connect(self.toggle_mute)
+        self.tray_thread.show_window_signal.connect(self.show)
         self.tray_thread.start()
         # Main Widget
         self.central_widget = QWidget()
@@ -193,12 +201,11 @@ class MainWindow(QMainWindow):
         # TODO: figure out a better way to align this element so text doesn't overflow and stretch the window
         self.hist_label.setMaximumWidth(250)
         self.layout.addWidget(self.hist_label)
-
-        # --- QTimer setup ---
+        # --- APM QTimer setup ---
         self.apm_timer = QTimer(self)
         self.apm_timer.timeout.connect(self.tracker_thread.update_apm)
         self.apm_timer.start(1000) 
-
+        # --- Save QTimer setup ---
         self.save_timer = QTimer(self)
         self.save_timer.timeout.connect(self.tracker_thread.save)
         self.save_timer.start(1000 * 60) # Save every 1m
@@ -206,7 +213,7 @@ class MainWindow(QMainWindow):
     def on_sound_pack_changed(self, text):
         print(f"Selected sound pack: {text}")
         self.tracker_thread.change_sounds(text)
-                
+
     def update_apm(self, apm):
         self.apm_label.setText(f"{apm}")
         # Set text color & size based on apm
@@ -248,7 +255,12 @@ class MainWindow(QMainWindow):
         color = f"#{hex(randint(16,255))[2:]}{hex(randint(16,255))[2:]}{hex(randint(16,255))[2:]}"
         self.hist_label.setStyleSheet(f"color: {color}")
 
-
+    def closeEvent(self, event):
+        if self.tray_thread.success: # maybe check if the thread is running instead?
+            event.ignore()
+            self.hide()
+        else: # if tray was not loaded exit instead of hiding.
+            os._exit(0)
 
 
 def convert_keys(key):
@@ -277,7 +289,6 @@ def convert_keys(key):
         # elif key == "ctrl_r": return
         elif key == "cmd": return "🪟"
         else: return key
-
     else: return key
 
 
