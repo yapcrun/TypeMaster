@@ -84,11 +84,11 @@ class TrackerThread(QThread):
         self.need_update = False # Is there new data to save?
 
         # TODO: Handle the case where the default sound pack is missing
-        self.pack = config.load_config()
-        if self.pack in os.listdir("sounds"):
-            self.change_sounds(self.pack)
+        self.pack = config.load_config() # Get the name of the last used pack
+        if self.pack in os.listdir("sounds"): # If the pack exists
+            self.change_sounds(self.pack) # Change sound pack to last used
         else:
-            config.load_config(reset=True)
+            self.pack = config.load_config(reset=True) # Else reset the sound pack back to default
 
     def on_press(self, key):
         data = self.tracker.on_press(key)
