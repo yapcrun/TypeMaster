@@ -1,14 +1,14 @@
 # TypeMaster
 
-TypeMaster is a cross-platform Python-based input tracker that plays sound effects when keys are pressed. It is designed to enhance the typing experience by associating key presses with customizable sound effects.
+TypeMaster is a cross-platform, GUI, Python-based typing enhancer that plays sound effects when keys are pressed. It is designed to enhance the typing experience by associating key presses with customizable sound effects.
 
 ## Features
 
 - **Tray Support**: Control functionality through a system tray icon.
 - **Key Sound Effects**: Plays different sound effects for specific keys based on their function.
 - **Customizable Sound Packs**: Supports multiple sound packs stored in the `sounds/` directory.
-- **Key Logging**: Logs the total key presses to a file (`key_log.txt`).
-- **Threaded Sound Playback**: Ensures non-blocking sound playback using threads.
+- **Key Stat Tracking**: Tracks the total key presses to a file (`key_log.txt`).
+- **Threaded Sound Playback**: Ensures non-blocking sound playback using threads or async(windows).
 
 ## Project Structure
 
@@ -18,8 +18,10 @@ TypeMaster is a cross-platform Python-based input tracker that plays sound effec
 
 ## Hotkeys
 
-- **Exit application**: `ctrl + q`
-- **Pause sounds**: `ctrl + l`
+Currently unimplemented
+
+- ~~**Exit application**: `ctrl + q`~~
+- ~~**Pause sounds**: `ctrl + l`~~
 
 ## Requirements
 
@@ -38,7 +40,7 @@ TypeMaster is a cross-platform Python-based input tracker that plays sound effec
 Install system dependencies using:
 
 ```bash
-sudo apt-get install libxcb-xinerama0 libxcb-xinerama0-dev libxcb-cursor0
+sudo apt-get install alsa-utils libxcb-xinerama0 libxcb-xinerama0-dev libxcb-cursor0
 ```
 
 ### Python
