@@ -23,6 +23,7 @@ class KeyHandler:
     def on_press(self, key):
         # BUG: pynput doesn't like the media_stop key (does not crash the program)
         # determine key type
+        actual_key = None
         try: 
             if hasattr(key, "char") and key.char is not None: # is a alpha numeric key
                 actual_key = key.char.lower()
@@ -30,9 +31,15 @@ class KeyHandler:
                 actual_key = key.name.lower()
         except Exception as e:
             print("Failed to determine key type\n\t{e}")
+                
 
         # actual_key = convert_keys(actual_key) # Convert relevent keys to emoji form
-
+            
+        if actual_key == None: actual_key = 'alt' # Hotfix for when the user presses shift + alt. In this case the key object has no set key.
+                                                  # (this may give rise to other problems / inaccurate data if the error is caused with other combos)
+                                                  # This bug may be linux only
+        if actual_key == ":": actual_key = "semicolon" # To prevent parsing issues with key_log.txt
+        
         # Logic to prevent registering heald keys multiple times
         if actual_key == self.last_press[0] and time.time() - self.last_press[1] < 0.09:
             self.last_press = [actual_key, time.time()]
@@ -40,7 +47,6 @@ class KeyHandler:
                     "stats": self.key_stats,
                     "last_key": actual_key}
 
-        if actual_key == ":": actual_key = "semicolon" # To prevent parsing issues 
 
         self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
         self.update_apm()
@@ -109,15 +115,16 @@ class KeyHandler:
         
         '''
         # TODO: Find a better way to make this logic better
+        # TODO: Base this off a dict/yaml/etc. that the user can edit?
         if len(key_name) == 1:
             self.sounds.ps("generic")
-        elif key_name in ['up', 'down', 'left', 'right', "➡️", "⬅️","⬇️", "⬆️"]:
+        elif key_name in ['up', 'down', 'left', 'right']:
             self.sounds.ps("arrow")
-        elif key_name in ["space", "☄️"]:
+        elif key_name in ["space"]:
             self.sounds.ps("space")
-        elif key_name in ["backspace", "🗑️", "🕳️"]:
+        elif key_name in ["backspace"]:
             self.sounds.ps("backspace")
-        elif key_name in ["enter", "↩️"]:
+        elif key_name in ["enter"]:
             self.sounds.ps("enter")
         else:
             self.sounds.ps("special")
