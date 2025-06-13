@@ -3,7 +3,7 @@ import time
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import sounds
-
+from load_dict import load_dict, save_dict
 # BUG: [WINDOWS] when pressing a modifier key and a normal key at the same time, the pressed character becomes a non-standard symbol character
 # EG: pressing "shift + c" results in " ♥" 
 
@@ -22,11 +22,11 @@ class KeyHandler:
         self.last_press = ["*", 0]
         self.last_save = time.time()
         self.combo = 0
+        self.hiscore = load_dict("hiscore")
+        if self.hiscore == None: self.hiscore = {"apm": 0, "combo": 0}
 
     def on_press(self, key):
-        # BUG: pynput doesn't like the media_stop key (does not crash the program)
         # determine key type
-        # BUG: Handle the case where the key is none
         actual_key = None
         combo = self.update_combo(self.last_press[1])
         try: 
@@ -56,18 +56,21 @@ class KeyHandler:
             return {"apm": self.apm,
                     "stats": self.key_stats,
                     "last_key": actual_key,
-                    "combo": combo}
+                    "combo": combo,
+                    "hiscore": self.hiscore}
 
 
         self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
         self.update_apm()
         self.last_press = [actual_key, time.time()]
+        self.update_hi_score()
         self.sound(actual_key)
         print(f"Tracker: Pressed {actual_key}")
         return {"apm": self.apm,
                 "stats": sort_dict_by_value(self.key_stats),
                 "last_key": actual_key,
-                "combo": combo}
+                "combo": combo,
+                "hiscore": self.hiscore}
 
     def get_apm(self):
         return self.apm
@@ -76,13 +79,18 @@ class KeyHandler:
         return self.key_stats
     
     def update_combo(self, last_press):
-        print(f"{time.time() - last_press }")
         if time.time() - last_press < 3.0:
             self.combo += 1
         else:
             self.combo = 0
         return self.combo
 
+    def update_hi_score(self):
+        # hiscore not being updated !!!!
+        if self.hiscore["apm"] < self.apm:
+            self.hiscore["apm"] = self.apm
+        if self.hiscore["combo"] < self.combo:
+            self.hiscore["combo"] = self.combo
 
     def update_apm(self, is_increasing = True):
         '''
@@ -130,6 +138,13 @@ class KeyHandler:
                 print("Keys saved to key_log.txt")
             except Exception as e:
                 print(f"Error saving keys: {e}")
+    
+    def save(self):
+        self.logfile("save")
+        save_dict(self.hiscore, "hiscore")
+
+
+            
 
     def sound(self, key_name):
         '''

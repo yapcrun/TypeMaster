@@ -23,9 +23,10 @@ DO_EMOJI = False # Enable emoji output
 # TODO: Comment and add definitions to functions/methods
 # TODO: research graph support (https://www.pyqtgraph.org/)
 # TODO: get argv and handle a --no-gui flag
-# TODO: Add a 'burst' label to track keys pressed reseting every 3s diff of time since last key (end burst combo at 3s no activity)
 # TODO: Add a window to track hi scores of burst and apm and wpm
-
+# TODO: Color combo
+# TODO: Make file handling consistant [wip]
+# TODO: Unify the signals down to one?
 
 class TrayThread(QThread):
     '''
@@ -79,6 +80,7 @@ class TrackerThread(QThread):
     stats_list_signal = pyqtSignal(dict)
     last_key_signal = pyqtSignal(str)
     combo_signal = pyqtSignal(int)
+    hi_score_signal = pyqtSignal(dict)
     def __init__(self):
         super().__init__()
         self.running = True
@@ -100,10 +102,12 @@ class TrackerThread(QThread):
         stats = data["stats"]
         last_key = data["last_key"]
         combo = data["combo"]
+        hi_score = data["hiscore"]
         self.apm_signal.emit(apm)
         self.stats_list_signal.emit(stats)
         self.last_key_signal.emit(last_key)
         self.combo_signal.emit(combo)
+        self.hi_score_signal.emit((hi_score))
         self.need_update = True
 
     def update_apm(self):
@@ -112,7 +116,7 @@ class TrackerThread(QThread):
 
     def save(self):
         if self.need_update == False: return
-        self.tracker.logfile("save")
+        self.tracker.save()
         self.need_update = False
 
     def change_sounds(self, pack: str):
@@ -150,13 +154,14 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("TypeMaster")
         self.setGeometry(100, 100, 300, 700)
         self.setWindowIcon(QIcon("COMP_ICON.png"))
-        
+
         # Tracker Thread Setup
         self.tracker_thread = TrackerThread()
         self.tracker_thread.apm_signal.connect(self.update_apm)
         self.tracker_thread.stats_list_signal.connect(self.populate_list)
         self.tracker_thread.last_key_signal.connect(self.update_hist_label)
         self.tracker_thread.combo_signal.connect(self.update_combo)
+        self.tracker_thread.hi_score_signal.connect(self.update_hi_score)
         self.tracker_thread.start()
         # Tray Thread Setup
         self.tray_thread = TrayThread()
@@ -171,7 +176,10 @@ class MainWindow(QMainWindow):
         self.layout = QVBoxLayout()
         self.central_widget.setLayout(self.layout)
         # --- APM/Combo Layout ---
-        apm_combo_hbox = QHBoxLayout()
+        apm_hiscore_combo_hbox = QHBoxLayout()
+        # Hi Scores Label
+        self.hi_score_label = QLabel("Hi-Scores\nAPM: []\nWPM: []\ncombo: []")
+        self.hi_score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # Left (APM) vertical layout
         apm_vbox = QVBoxLayout()
         self.apm_h_label = QLabel("APM")
@@ -193,10 +201,11 @@ class MainWindow(QMainWindow):
         self.apm_combo_label.setStyleSheet("font-size: 17px;")
         combo_vbox.addWidget(self.apm_combo_label)
         # Add both vboxes to the hbox
-        apm_combo_hbox.addLayout(apm_vbox, 1)
-        apm_combo_hbox.addLayout(combo_vbox, 1)
+        apm_hiscore_combo_hbox.addLayout(apm_vbox, 1)
+        apm_hiscore_combo_hbox.addWidget(self.hi_score_label)
+        apm_hiscore_combo_hbox.addLayout(combo_vbox, 1)
         # Add the hbox to the main layout
-        self.layout.addLayout(apm_combo_hbox)
+        self.layout.addLayout(apm_hiscore_combo_hbox)
         # Key Stats
         self.key_stats = QListWidget()
         self.layout.addWidget(self.key_stats)
@@ -252,8 +261,10 @@ class MainWindow(QMainWindow):
             self.apm_label.setStyleSheet("color: red; font-size: 34px;")
 
     def update_combo(self, combo):
-        self.apm_combo_label.setText(f"{combo}x")
+        self.apm_combo_label.setText(f"{combo}")
 
+    def update_hi_score(self, combo):
+        self.hi_score_label.setText(f"Hi-Scores\nAPM: [{combo['apm']}]\nCOMBO: [{combo['combo']}]")
 
     def populate_list(self, data: dict):
         self.key_stats.clear()
