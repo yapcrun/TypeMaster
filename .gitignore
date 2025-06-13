@@ -1,6 +1,7 @@
 *test*
-key_log.txt
+*key_log.txt
 .venv/
 nohup.out
 __pycache__/
 .config
+*hiscore
