@@ -12,18 +12,19 @@ import config
 # Set cwd to make sure paths are correct
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-DO_EMOJI = True # Enable emoji output
+DO_EMOJI = False # Enable emoji output
 
 # TODO: Test on Windows
 # TODO: Figure out new sound emission method.
 # BUG: Figure out why sounds stop then play all @ once on linux. (fix w/ above todo?)
 # TODO: Implement hotkey functionality. 
 # TODO: Make the list fancy
-# TODO: Update README
 # TODO: Add a WPM counter
 # TODO: Comment and add definitions to functions/methods
 # TODO: research graph support (https://www.pyqtgraph.org/)
 # TODO: get argv and handle a --no-gui flag
+# TODO: Add a 'burst' label to track keys pressed reseting every 3s diff of time since last key (end burst combo at 3s no activity)
+# TODO: Add a window to track hi scores of burst and apm and wpm
 
 
 class TrayThread(QThread):
@@ -77,6 +78,7 @@ class TrackerThread(QThread):
     apm_signal = pyqtSignal(int)
     stats_list_signal = pyqtSignal(dict)
     last_key_signal = pyqtSignal(str)
+    combo_signal = pyqtSignal(int)
     def __init__(self):
         super().__init__()
         self.running = True
@@ -91,13 +93,17 @@ class TrackerThread(QThread):
             self.pack = config.load_config(reset=True) # Else reset the sound pack back to default
 
     def on_press(self, key):
+        if hasattr(key, "char") and key.char == None: return # couldn't identify the key pressed, do nothing
         data = self.tracker.on_press(key)
+
         apm = data["apm"]
         stats = data["stats"]
         last_key = data["last_key"]
+        combo = data["combo"]
         self.apm_signal.emit(apm)
         self.stats_list_signal.emit(stats)
         self.last_key_signal.emit(last_key)
+        self.combo_signal.emit(combo)
         self.need_update = True
 
     def update_apm(self):
@@ -144,33 +150,53 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("TypeMaster")
         self.setGeometry(100, 100, 300, 700)
         self.setWindowIcon(QIcon("COMP_ICON.png"))
+        
         # Tracker Thread Setup
         self.tracker_thread = TrackerThread()
         self.tracker_thread.apm_signal.connect(self.update_apm)
         self.tracker_thread.stats_list_signal.connect(self.populate_list)
         self.tracker_thread.last_key_signal.connect(self.update_hist_label)
+        self.tracker_thread.combo_signal.connect(self.update_combo)
         self.tracker_thread.start()
         # Tray Thread Setup
         self.tray_thread = TrayThread()
         self.tray_thread.toggle_audio_signal.connect(self.toggle_mute)
         self.tray_thread.show_window_signal.connect(self.show)
         self.tray_thread.start()
+
         # Main Widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         # Main Layout
         self.layout = QVBoxLayout()
         self.central_widget.setLayout(self.layout)
-        # APM Header Label
+        # --- APM/Combo Layout ---
+        apm_combo_hbox = QHBoxLayout()
+        # Left (APM) vertical layout
+        apm_vbox = QVBoxLayout()
         self.apm_h_label = QLabel("APM")
-        self.apm_h_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.apm_h_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.apm_h_label.setStyleSheet("font-size: 24px;")
-        self.layout.addWidget(self.apm_h_label)
-        # APM Label
+        apm_vbox.addWidget(self.apm_h_label)
         self.apm_label = QLabel("0")
-        self.apm_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.apm_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.apm_label.setStyleSheet("font-size: 24px;")
-        self.layout.addWidget(self.apm_label)
+        apm_vbox.addWidget(self.apm_label)
+        # Right (Combo) vertical layout
+        combo_vbox = QVBoxLayout()
+        self.apm_combo_h_label = QLabel("combo")
+        self.apm_combo_h_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.apm_combo_h_label.setStyleSheet("font-size: 17px;")
+        combo_vbox.addWidget(self.apm_combo_h_label)
+        self.apm_combo_label = QLabel("0")
+        self.apm_combo_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.apm_combo_label.setStyleSheet("font-size: 17px;")
+        combo_vbox.addWidget(self.apm_combo_label)
+        # Add both vboxes to the hbox
+        apm_combo_hbox.addLayout(apm_vbox, 1)
+        apm_combo_hbox.addLayout(combo_vbox, 1)
+        # Add the hbox to the main layout
+        self.layout.addLayout(apm_combo_hbox)
         # Key Stats
         self.key_stats = QListWidget()
         self.layout.addWidget(self.key_stats)
@@ -225,12 +251,17 @@ class MainWindow(QMainWindow):
         elif apm > 175:
             self.apm_label.setStyleSheet("color: red; font-size: 34px;")
 
+    def update_combo(self, combo):
+        self.apm_combo_label.setText(f"{combo}x")
+
+
     def populate_list(self, data: dict):
         self.key_stats.clear()
         for key, taps in data.items():
             self.key_stats.addItem(f"{convert_keys(key)}: {taps}")
 
     def toggle_mute(self):
+        # BUG: RecursionError when toggled from the tray (not effecting functionality)
         print("Toggling sound")
         self.tracker_thread.tracker.sounds.toggle_sound()
         is_muted = not self.tracker_thread.tracker.sounds.play # Get the current mute state

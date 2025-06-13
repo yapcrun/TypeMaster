@@ -7,6 +7,8 @@ import sounds
 # BUG: [WINDOWS] when pressing a modifier key and a normal key at the same time, the pressed character becomes a non-standard symbol character
 # EG: pressing "shift + c" results in " ♥" 
 
+COMBO_THRESHOLD = 3 # seconds
+
 class KeyHandler:
     '''
     Class to handle key stats, apm
@@ -19,19 +21,27 @@ class KeyHandler:
         self.sounds = sounds.Sound()
         self.last_press = ["*", 0]
         self.last_save = time.time()
+        self.combo = 0
 
     def on_press(self, key):
         # BUG: pynput doesn't like the media_stop key (does not crash the program)
         # determine key type
+        # BUG: Handle the case where the key is none
         actual_key = None
+        combo = self.update_combo(self.last_press[1])
         try: 
             if hasattr(key, "char") and key.char is not None: # is a alpha numeric key
                 actual_key = key.char.lower()
+
             elif hasattr(key, "name"): # is mod, arrow, etc.
                 actual_key = key.name.lower()
+
+            else:
+                actual_key = "౸"
+                print(f"Error identifying key\n{key.__dict__}")
         except Exception as e:
             print("Failed to determine key type\n\t{e}")
-                
+
 
         # actual_key = convert_keys(actual_key) # Convert relevent keys to emoji form
             
@@ -45,7 +55,8 @@ class KeyHandler:
             self.last_press = [actual_key, time.time()]
             return {"apm": self.apm,
                     "stats": self.key_stats,
-                    "last_key": actual_key}
+                    "last_key": actual_key,
+                    "combo": combo}
 
 
         self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
@@ -55,13 +66,23 @@ class KeyHandler:
         print(f"Tracker: Pressed {actual_key}")
         return {"apm": self.apm,
                 "stats": sort_dict_by_value(self.key_stats),
-                "last_key": actual_key}
+                "last_key": actual_key,
+                "combo": combo}
 
     def get_apm(self):
         return self.apm
 
     def get_key_stats(self):
         return self.key_stats
+    
+    def update_combo(self, last_press):
+        print(f"{time.time() - last_press }")
+        if time.time() - last_press < 3.0:
+            self.combo += 1
+        else:
+            self.combo = 0
+        return self.combo
+
 
     def update_apm(self, is_increasing = True):
         '''
