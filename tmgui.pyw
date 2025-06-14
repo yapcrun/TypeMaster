@@ -6,7 +6,7 @@ from pynput import keyboard
 from random import randint
 import os
 import tracker2
-import config
+from load_dict import load_dict, save_dict
 
 
 # Set cwd to make sure paths are correct
@@ -14,9 +14,6 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 DO_EMOJI = False # Enable emoji output
 
-# TODO: Test on Windows
-# TODO: Figure out new sound emission method.
-# BUG: Figure out why sounds stop then play all @ once on linux. (fix w/ above todo?)
 # TODO: Implement hotkey functionality. 
 # TODO: Make the list fancy
 # TODO: Add a WPM counter
@@ -25,7 +22,6 @@ DO_EMOJI = False # Enable emoji output
 # TODO: get argv and handle a --no-gui flag
 # TODO: Add a window to track hi scores of burst and apm and wpm
 # TODO: Color combo
-# TODO: Make file handling consistant [wip]
 # TODO: Unify the signals down to one?
 
 class TrayThread(QThread):
@@ -35,6 +31,7 @@ class TrayThread(QThread):
     # TODO: Make an exit signal and save stats on exit from main thread.
     toggle_audio_signal = pyqtSignal()
     show_window_signal = pyqtSignal()
+    exit_signal = pyqtSignal()
     def __init__(self):
         super().__init__()
         self.success = False
@@ -64,7 +61,7 @@ class TrayThread(QThread):
             print("Audio Toggled")
             self.toggle_audio_signal.emit()
         elif item == "Exit":
-            os._exit(0)
+            self.exit_signal.emit()
         elif item == "Show GUI":
             self.show_window_signal.emit()
 
@@ -86,13 +83,16 @@ class TrackerThread(QThread):
         self.running = True
         self.tracker = tracker2.KeyHandler()
         self.need_update = False # Is there new data to save?
-
-        # TODO: Handle the case where the default sound pack is missing
-        self.pack = config.load_config() # Get the name of the last used pack
+        self.config = load_dict(".config")
+        if self.config == None: self.config = {"soundpack": "default"} # If there is no config file reset it
+        self.pack = self.config["soundpack"] # Get the name of the last used pack
+        # TODO: Handle the case where the DEFAULT sound pack is missing
         if self.pack in os.listdir("sounds"): # If the pack exists
             self.change_sounds(self.pack) # Change sound pack to last used
         else:
-            self.pack = config.load_config(reset=True) # Else reset the sound pack back to default
+            self.pack = "default"  # Else reset the sound pack back to default
+            self.config["soundpack"] = "default"
+            save_dict(self.config, ".config")
 
     def on_press(self, key):
         if hasattr(key, "char") and key.char == None: return # couldn't identify the key pressed, do nothing
@@ -121,7 +121,8 @@ class TrackerThread(QThread):
 
     def change_sounds(self, pack: str):
         self.tracker.sounds.load_sounds(pack)
-        config.save_config(pack)
+        self.config["soundpack"] = pack
+        save_dict(self.config, ".config")
 
     def run(self):
         self.stats_list_signal.emit(self.tracker.get_key_stats())
@@ -167,6 +168,7 @@ class MainWindow(QMainWindow):
         self.tray_thread = TrayThread()
         self.tray_thread.toggle_audio_signal.connect(self.toggle_mute)
         self.tray_thread.show_window_signal.connect(self.show)
+        self.tray_thread.exit_signal.connect(self.exit)
         self.tray_thread.start()
 
         # Main Widget
@@ -178,7 +180,7 @@ class MainWindow(QMainWindow):
         # --- APM/Combo Layout ---
         apm_hiscore_combo_hbox = QHBoxLayout()
         # Hi Scores Label
-        self.hi_score_label = QLabel("Hi-Scores\nAPM: []\nWPM: []\ncombo: []")
+        self.hi_score_label = QLabel("Hi-Scores\nAPM: []\nCOMBO: []")
         self.hi_score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # Left (APM) vertical layout
         apm_vbox = QVBoxLayout()
@@ -297,11 +299,17 @@ class MainWindow(QMainWindow):
         color = f"#{hex(randint(16,255))[2:]}{hex(randint(16,255))[2:]}{hex(randint(16,255))[2:]}"
         self.hist_label.setStyleSheet(f"color: {color}")
 
+    def exit(self):
+        self.tracker_thread.save()
+        self.tray_thread.icon.stop()
+        os._exit(0)
+
     def closeEvent(self, event):
         if self.tray_thread.success: # maybe check if the thread is running instead?
             event.ignore()
             self.hide()
         else: # if tray was not loaded exit instead of hiding.
+            self.tracker_thread.save()
             os._exit(0)
 
 
