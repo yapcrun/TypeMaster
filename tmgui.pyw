@@ -98,6 +98,7 @@ class TrackerThread(QThread):
     def on_press(self, key):
         if key == None or hasattr(key, "char") and key.char == None: return # couldn't identify the key pressed, do nothing
         data = self.tracker.on_press(key)
+        if data == None: return # Key was heald down, we don't want to track it, so do nothing
 
         apm = data["apm"]
         stats = data["stats"]
