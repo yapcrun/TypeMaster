@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6.QtWidgets import QComboBox, QApplication, QWidget, QPushButton, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QListWidget, QCheckBox
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QFontDatabase, QFont
 import sys
 from pynput import keyboard
 from random import randint
@@ -23,6 +23,7 @@ DO_EMOJI = False # Enable emoji output
 # TODO: Add a window to track hi scores of burst and apm and wpm
 # TODO: Color combo
 # TODO: Unify the signals down to one?
+
 
 class TrayThread(QThread):
     '''
@@ -95,7 +96,7 @@ class TrackerThread(QThread):
             save_dict(self.config, ".config")
 
     def on_press(self, key):
-        if hasattr(key, "char") and key.char == None: return # couldn't identify the key pressed, do nothing
+        if key == None or hasattr(key, "char") and key.char == None: return # couldn't identify the key pressed, do nothing
         data = self.tracker.on_press(key)
 
         apm = data["apm"]
@@ -150,6 +151,14 @@ class MainWindow(QMainWindow):
     '''
     def __init__(self):
         super().__init__()
+        font_id = QFontDatabase.addApplicationFont("bin/font.ttf")
+        if font_id != -1:
+            font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
+            self.custom_font = QFont(font_family)
+        else:
+            print("Failed to load font.ttf")
+            self.custom_font = self.font()  # Load the default PyQt font
+
         self.last_chars = ['*']*16 # List for hist_label 
         # Main window setup
         self.setWindowTitle("TypeMaster")
@@ -182,25 +191,30 @@ class MainWindow(QMainWindow):
         # Hi Scores Label
         self.hi_score_label = QLabel("Hi-Scores\nAPM: []\nCOMBO: []")
         self.hi_score_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.hi_score_label.setFont(self.custom_font)
         # Left (APM) vertical layout
         apm_vbox = QVBoxLayout()
         self.apm_h_label = QLabel("APM")
         self.apm_h_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.apm_h_label.setStyleSheet("font-size: 24px;")
+        self.apm_h_label.setFont(self.custom_font)
         apm_vbox.addWidget(self.apm_h_label)
         self.apm_label = QLabel("0")
         self.apm_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.apm_label.setStyleSheet("font-size: 24px;")
+        self.apm_label.setFont(self.custom_font)
         apm_vbox.addWidget(self.apm_label)
         # Right (Combo) vertical layout
         combo_vbox = QVBoxLayout()
         self.apm_combo_h_label = QLabel("combo")
         self.apm_combo_h_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.apm_combo_h_label.setStyleSheet("font-size: 17px;")
+        self.apm_combo_h_label.setFont(self.custom_font)
         combo_vbox.addWidget(self.apm_combo_h_label)
         self.apm_combo_label = QLabel("0")
         self.apm_combo_label.setAlignment(Qt.AlignmentFlag.AlignRight)
         self.apm_combo_label.setStyleSheet("font-size: 17px;")
+        self.apm_combo_label.setFont(self.custom_font)
         combo_vbox.addWidget(self.apm_combo_label)
         # Add both vboxes to the hbox
         apm_hiscore_combo_hbox.addLayout(apm_vbox, 1)
@@ -237,6 +251,7 @@ class MainWindow(QMainWindow):
         self.hist_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         # TODO: figure out a better way to align this element so text doesn't overflow and stretch the window
         self.hist_label.setMaximumWidth(250)
+        self.hist_label.setFont(self.custom_font)
         self.layout.addWidget(self.hist_label)
         # --- APM QTimer setup ---
         self.apm_timer = QTimer(self)
@@ -346,5 +361,4 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    
     app.exec()
