@@ -1,4 +1,5 @@
-# from pynput import keyboard
+
+# Loaded from tmgui
 import time
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -14,8 +15,8 @@ class KeyHandler:
     Class to handle key stats, apm
     '''
     def __init__(self):
-        self.key_stats = {}
-        self.logfile("load")
+        self.key_stats = load_dict("key_stats")
+        if self.key_stats == None: self.key_stats = {}
         self.apm = 0
         self.apm_times = []
         self.sounds = sounds.Sound()
@@ -42,9 +43,6 @@ class KeyHandler:
         except Exception as e:
             print("Failed to determine key type\n\t{e}")
 
-
-        # actual_key = convert_keys(actual_key) # Convert relevent keys to emoji form
-            
         if actual_key == None: actual_key = 'alt' # Hotfix for when the user presses shift + alt. In this case the key object has no set key.
                                                   # (this may give rise to other problems / inaccurate data if the error is caused with other combos)
                                                   # This bug may be linux only
@@ -53,12 +51,13 @@ class KeyHandler:
         # Logic to prevent registering heald keys multiple times
         if actual_key == self.last_press[0] and time.time() - self.last_press[1] < 0.09:
             self.last_press = [actual_key, time.time()]
+            # If the key is heald return the don't update data and return old data
+            return None
             return {"apm": self.apm,
                     "stats": self.key_stats,
                     "last_key": actual_key,
                     "combo": combo,
                     "hiscore": self.hiscore}
-
 
         self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
         self.update_apm()
@@ -114,37 +113,12 @@ class KeyHandler:
         self.apm = len(self.apm_times) # set the new apm value
         return self.apm
 
-    def logfile(self, mode="load"):
-        '''
-        Method for saving/loading the key_stats from a txt file
-        '''
-        if mode == "load": # Load the key stats
-            try:
-                if os.path.exists('key_log.txt'):
-                    with open('key_log.txt', 'r') as f:
-                        for line in f:
-                            key, count = line.strip().split(': ')
-                            self.key_stats[key] = int(count)
-                    print("Keys loaded from key_log.txt")
-                else:
-                    print("No previous key log found.")
-            except Exception as e:
-                print(f"Error loading keys: {e}")
-        elif mode == "save": # Save the key stats
-            try:
-                with open('key_log.txt', 'w') as f:
-                    for key, count in sort_dict_by_value(self.key_stats).items():
-                        f.write(f'{key}: {count}\n')
-                print("Keys saved to key_log.txt")
-            except Exception as e:
-                print(f"Error saving keys: {e}")
     
     def save(self):
-        self.logfile("save")
+        # self.logfile("save")
+        save_dict(sort_dict_by_value(self.key_stats), "key_stats")
         save_dict(self.hiscore, "hiscore")
 
-
-            
 
     def sound(self, key_name):
         '''

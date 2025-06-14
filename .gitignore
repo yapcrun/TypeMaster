@@ -5,3 +5,4 @@ nohup.out
 __pycache__/
 .config
 *hiscore
+*key_stats
