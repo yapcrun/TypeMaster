@@ -143,8 +143,6 @@ class KeyHandler:
         Args:
             key_name (str): The name of the key pressed.
         '''
-        # TODO: Find a better way to make this logic better
-        # TODO: Base this off a dict/yaml/etc. that the user can edit?
         if len(key_name) == 1:
             self.sounds.ps("generic")
         elif key_name in ['up', 'down', 'left', 'right']:

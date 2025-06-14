@@ -12,7 +12,6 @@ cwd = os.getcwd()
 if DEBUG: print(f"sounds.py cwd: {cwd}")
 
 class Sound:
-    # TODO: load sound into memory to minimize disk reads
     def __init__(self):
         self.mixer = mixer.init()
         mixer.set_num_channels(28)

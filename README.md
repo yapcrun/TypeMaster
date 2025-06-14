@@ -20,20 +20,6 @@ TypeMaster is a cross-platform, GUI, Python-based typing enhancer that plays sou
 
 ## Requirements
 
-### System
-
-##### If PyQt6 fails to load on liunux
-
-- `libxcb-xinerama0` For PyQt6
-- `libxcb-xinerama0-dev` For PyQt6
-- `libxcb-cursor0`: For PyQt6
-
-Install system dependencies using:
-
-```bash
-sudo apt-get install libxcb-xinerama0 libxcb-xinerama0-dev libxcb-cursor0
-```
-
 ### Python
 
 - `Python 3.6+`
@@ -48,7 +34,19 @@ Install python dependencies using:
 pip install -r requirements.txt
 ```
 
-## Known Bugs
+### Linux
+
+
+##### If PyQt6 fails to load on linux you must install
+`libxcb-xinerama0` `libxcb-xinerama0-dev` `libxcb-cursor0`
+
+Install PyQt6 dependencies using:
+
+```bash
+sudo apt-get install libxcb-xinerama0 libxcb-xinerama0-dev libxcb-cursor0
+```
+
+## Known Issues
 
 - Linux tray icon will not work correctly if operating in a venv
 - Display freezes when operating in a venv
