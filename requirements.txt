@@ -2,3 +2,4 @@ pynput
 pystray
 pillow
 PyQt6
+pygame
