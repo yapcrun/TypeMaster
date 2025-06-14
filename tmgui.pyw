@@ -14,12 +14,9 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 DO_EMOJI = False # Enable emoji output
 
-# TODO: Implement hotkey functionality. 
 # TODO: Make the list fancy
 # TODO: Add a WPM counter
-# TODO: Comment and add definitions to functions/methods
 # TODO: research graph support (https://www.pyqtgraph.org/)
-# TODO: get argv and handle a --no-gui flag
 # TODO: Color combo
 # TODO: Unify the signals down to one?
 # TODO: Add a settings/info window
@@ -284,7 +281,7 @@ class MainWindow(QMainWindow):
         self.controls_layout.addWidget(self.aot_toggle, 0)
         # Mute Toggle
         self.mute_toggle = QCheckBox(text="mute")
-        self.mute_toggle.stateChanged.connect(self.toggle_mute)
+        self.mute_toggle.stateChanged.connect(self.toggle_mute) # --------------------------------------------------------------------------------
         self.controls_layout.addWidget(self.mute_toggle, 0)
         # Add Horizontal controls layout
         self.layout.addLayout(self.controls_layout)
@@ -362,11 +359,11 @@ class MainWindow(QMainWindow):
         '''
         Toggle the mute state for key sounds and update the mute checkbox.
         '''
-        # BUG: RecursionError when toggled from the tray (not effecting functionality)
-        print("Toggling sound")
-        self.tracker_thread.tracker.sounds.toggle_sound()
-        is_muted = not self.tracker_thread.tracker.sounds.play # Get the current mute state
-        self.mute_toggle.setChecked(is_muted) # Update the checkbox state
+        self.tracker_thread.tracker.sounds.toggle_sound() 
+        is_muted = not self.tracker_thread.tracker.sounds.play  # Get the current mute state
+        self.mute_toggle.blockSignals(True)  # Block signals to prevent recursion
+        self.mute_toggle.setChecked(is_muted)  # Update the checkbox state
+        self.mute_toggle.blockSignals(False)  # Re-enable signals
 
     def toggle_always_on_top(self):
         '''

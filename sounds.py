@@ -1,8 +1,9 @@
 
 # Loaded from tracker2
 import os
-from random import choice
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from pygame import mixer
+from random import choice
 
 
 DEBUG = False
@@ -74,6 +75,7 @@ class Sound:
             print(f"backspace sounds: {self.backspace_sounds}")
 
     def ps(self, key_type = "generic"):
+        if not self.play: return
         if key_type == "special":
             choice(self.special_sounds).play()
         elif key_type == "arrow":
