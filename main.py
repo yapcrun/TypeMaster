@@ -1,18 +1,21 @@
+import tmgui
 import os
 import time
 import threading
 import subprocess
 from random import choice
 from pynput import keyboard
+# Importing winsound only on Windows
+if os.name == 'nt': import winsound
+# Ensure the environment variable for pystray backend is set to gtk
+if os.name == 'posix': 
+    os.environ["PYSTRAY_BACKEND"] = "gtk" # BUG: This will not work in a venv
 
-# TODO: Display key press stats (in a GUI?)
-# TODO: Make a system tray icon?
+# TODO: Make this script sub to the GUI
 # TODO: Make the exit hotkey more complex
-# TODO: Make play_sound() windows compatible
-# TODO: Make the sounds loaded into memory to minimize disk reads
+# TODO: Create a method to calculate apm
 
-
-print("Typemaster v0.1.0")
+print(f"{'-'*10}Typemaster v0.1.0{'-'*10}")
 
 SOUNDS = "default"
 DEBUG = False
@@ -22,14 +25,14 @@ EXIT_KEY = "q"
 PAUSE_KEY = "l"
 if not DO_LOGGING: print("Logging disabled!!")
 
-
+# Set CWD to access sound paths correctly
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 cwd = os.getcwd()
 print(cwd)
-os_type = os.name
-print(os_type)
+print(f"OS: {os.name}")
 
 class Sound:
+    # TODO: load sound into memory to minimize disk reads
     def __init__(self, sounds = SOUNDS):
         self.sounds = sounds
         self.tap_sounds = []
@@ -84,7 +87,11 @@ class Sound:
         else:
             sound = choice(self.tap_sounds)
         
-        subprocess.run("aplay -q " + sound, cwd=cwd, shell=True)
+        if os.name == 'nt':  # Windows
+            # TODO: Fix windows audio so sounds can play in parallel
+            winsound.PlaySound(sound, winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
+        else:  # Linux or other OS
+            subprocess.run("aplay -q " + sound, cwd=cwd, shell=True)
 
     def ps(self, key_type = "generic"):
         if key_type == "special":
@@ -100,6 +107,10 @@ class Sound:
         else:
             threading.Thread(target=self.play_sound).start()
 
+    def toggle_sound(self):
+        self.play = not self.play
+
+
 
 class InputTracker:
     def __init__(self):
@@ -109,6 +120,8 @@ class InputTracker:
         self.last_save_time = time.time()
         self.mod_key_pressed = False
 
+    def toggle_sound(self):
+        self.sound.toggle_sound()
         
     def on_press(self, key):
         if DEBUG: print(key.__dict__)
@@ -125,12 +138,10 @@ class InputTracker:
                     return
                 elif self.mod_key_pressed and key.char == EXIT_KEY:
                     self.save_keys()
-                    exit(0)
-
+                    os._exit(0)
 
                 if DO_LOGGING: self.key_dict[key.char] = self.key_dict.get(key.char, 0) + 1
                 if DO_PRINT: print(f'Key pressed: {key.char}')
-
 
                 self.sound.ps()
                 
@@ -159,7 +170,7 @@ class InputTracker:
         if time.time() - self.last_save_time > 60:
             if DO_LOGGING: self.save_keys()
             self.last_save_time = time.time()
-                
+
     def on_release(self, key):
         if DEBUG: print(f"Release:{key}")
         try:
@@ -190,9 +201,42 @@ class InputTracker:
         except Exception as e:
             print(f"Error loading keys: {e}")
 
-
-
 input_tracker = InputTracker()
+
+
+# TODO: Fix AssertionError (I think this happens when the display is disabled(only on linux?))
+try:
+    import pystray
+    from PIL import Image
+    
+    def after_click(icon, item):
+        print(f"Clicked on {item}")
+        if str(item) == "Toggle Audio":
+            input_tracker.toggle_sound()
+            print("Audio Toggled")
+        elif str(item) == "Exit":
+            icon.stop()
+            os._exit(0)
+
+    image = Image.open("COMP_ICON.png")
+    icon = pystray.Icon("TypeMaster", image, "TypeMaster", menu=pystray.Menu(
+        # pystray.MenuItem("Show GUI", ),
+        pystray.MenuItem("Toggle Audio", after_click),
+        pystray.MenuItem("Exit", after_click)
+    ))
+
+    threading.Thread(target=icon.run).start()
+
+except ImportError:
+    print("pystray or pillow not found, tray icon support disabled.")
+except AssertionError:
+        print("AssertionError: Tray icon support disabled.")
+except Exception as e:
+    print(f"Error starting tray icon: {e}")
+        # icon.stop()
+        # os._exit(0)
+
+
 with keyboard.Listener(
         on_press=input_tracker.on_press,
         on_release=input_tracker.on_release
@@ -204,3 +248,4 @@ with keyboard.Listener(
         os._exit(0)
     except Exception as e:
         print(f"An error occurred: {e}")
+
