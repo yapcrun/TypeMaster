@@ -20,20 +20,22 @@ DO_EMOJI = False # Enable emoji output
 # TODO: Comment and add definitions to functions/methods
 # TODO: research graph support (https://www.pyqtgraph.org/)
 # TODO: get argv and handle a --no-gui flag
-# TODO: Add a window to track hi scores of burst and apm and wpm
 # TODO: Color combo
 # TODO: Unify the signals down to one?
+# TODO: Add a settings/info window
 
 
 class TrayThread(QThread):
     '''
     QThread object that creats a pystray menu to interface with the main gui window
     '''
-    # TODO: Make an exit signal and save stats on exit from main thread.
     toggle_audio_signal = pyqtSignal()
     show_window_signal = pyqtSignal()
     exit_signal = pyqtSignal()
     def __init__(self):
+        '''
+        Initialize the TrayThread, setting up the system tray icon and menu.
+        '''
         super().__init__()
         self.success = False
         try:
@@ -57,6 +59,13 @@ class TrayThread(QThread):
                 # os._exit(0)
 
     def after_click(self, _icon, item):
+        '''
+        Handle clicks on the tray icon menu items.
+
+        Args:
+            _icon: The tray icon instance.
+            item: The clicked menu item.
+        '''
         item = str(item)  # Convert item to string for comparison
         if item == "Toggle Audio":
             print("Audio Toggled")
@@ -67,6 +76,9 @@ class TrayThread(QThread):
             self.show_window_signal.emit()
 
     def run(self):
+        '''
+        Start the tray icon event loop if initialization was successful.
+        '''
         if self.success: # if pystray loaded successfully
             self.icon.run()
 
@@ -80,6 +92,9 @@ class TrackerThread(QThread):
     combo_signal = pyqtSignal(int)
     hi_score_signal = pyqtSignal(dict)
     def __init__(self):
+        '''
+        Initialize the TrackerThread, loading configuration and setting up the key tracker.
+        '''
         super().__init__()
         self.running = True
         self.tracker = tracker2.KeyHandler()
@@ -96,6 +111,12 @@ class TrackerThread(QThread):
             save_dict(self.config, ".config")
 
     def on_press(self, key):
+        '''
+        Handle a key press event, update statistics, and emit relevant signals.
+
+        Args:
+            key: The key event object.
+        '''
         if key == None or hasattr(key, "char") and key.char == None: return # couldn't identify the key pressed, do nothing
         data = self.tracker.on_press(key)
         if data == None: return # Key was heald down, we don't want to track it, so do nothing
@@ -113,20 +134,35 @@ class TrackerThread(QThread):
         self.need_update = True
 
     def update_apm(self):
+        '''
+        Update and emit the current actions per minute (APM).
+        '''
         apm = self.tracker.update_apm(False)
         self.apm_signal.emit(apm)
 
     def save(self):
+        '''
+        Save the current tracker statistics if there are updates.
+        '''
         if self.need_update == False: return
         self.tracker.save()
         self.need_update = False
 
     def change_sounds(self, pack: str):
+        '''
+        Change the current sound pack and update configuration.
+
+        Args:
+            pack (str): The name of the sound pack to load.
+        '''
         self.tracker.sounds.load_sounds(pack)
         self.config["soundpack"] = pack
         save_dict(self.config, ".config")
 
     def run(self):
+        '''
+        Start the keyboard listener and process key events in a loop.
+        '''
         self.stats_list_signal.emit(self.tracker.get_key_stats())
         print("Tracker thread started.")
         while self.running:
@@ -143,6 +179,9 @@ class TrackerThread(QThread):
                     print(f"An error occurred: {e}")
 
     def stop(self):
+        '''
+        Stop the tracker thread.
+        '''
         self.running = False
 
 
@@ -151,6 +190,9 @@ class MainWindow(QMainWindow):
     TypeMaster main gui window.
     '''
     def __init__(self):
+        '''
+        Initialize the main window, set up the UI, and start background threads.
+        '''
         super().__init__()
         font_id = QFontDatabase.addApplicationFont("bin/font.ttf")
         if font_id != -1:
@@ -264,10 +306,22 @@ class MainWindow(QMainWindow):
         self.save_timer.start(1000 * 60) # Save every 1m
 
     def on_sound_pack_changed(self, text):
+        '''
+        Handle changes to the selected sound pack.
+
+        Args:
+            text (str): The name of the selected sound pack.
+        '''
         print(f"Selected sound pack: {text}")
         self.tracker_thread.change_sounds(text)
 
     def update_apm(self, apm):
+        '''
+        Update the displayed actions per minute (APM) value and color.
+
+        Args:
+            apm (int): The current APM value.
+        '''
         self.apm_label.setText(f"{apm}")
         if apm < 255: # if apm not past the max red value
             color = f"rgb({apm}, {255-apm}, 0)" # (apm reduces green and increases red up to 255)
@@ -276,17 +330,38 @@ class MainWindow(QMainWindow):
         self.apm_label.setStyleSheet(f"color: {color}; font-size: 24px;")
 
     def update_combo(self, combo):
+        '''
+        Update the displayed combo value.
+
+        Args:
+            combo (int): The current combo count.
+        '''
         self.apm_combo_label.setText(f"{combo}")
 
     def update_hi_score(self, combo):
+        '''
+        Update the displayed high score values.
+
+        Args:
+            combo (dict): Dictionary containing 'apm' and 'combo' high scores.
+        '''
         self.hi_score_label.setText(f"Hi-Scores\nAPM: [{combo['apm']}]\nCOMBO: [{combo['combo']}]")
 
     def populate_list(self, data: dict):
+        '''
+        Populate the key statistics list widget with updated data.
+
+        Args:
+            data (dict): Dictionary of key statistics.
+        '''
         self.key_stats.clear()
         for key, taps in data.items():
             self.key_stats.addItem(f"{convert_keys(key)}: {taps}")
 
     def toggle_mute(self):
+        '''
+        Toggle the mute state for key sounds and update the mute checkbox.
+        '''
         # BUG: RecursionError when toggled from the tray (not effecting functionality)
         print("Toggling sound")
         self.tracker_thread.tracker.sounds.toggle_sound()
@@ -294,6 +369,9 @@ class MainWindow(QMainWindow):
         self.mute_toggle.setChecked(is_muted) # Update the checkbox state
 
     def toggle_always_on_top(self):
+        '''
+        Toggle the "always on top" window flag for the main window.
+        '''
         flags = self.windowFlags()
         if flags & Qt.WindowType.WindowStaysOnTopHint:
             self.setWindowFlags(flags & ~Qt.WindowType.WindowStaysOnTopHint)
@@ -302,6 +380,12 @@ class MainWindow(QMainWindow):
         self.show()
 
     def update_hist_label(self, text):
+        '''
+        Update the history label with the latest key presses.
+
+        Args:
+            text (str): The latest key pressed.
+        '''
         self.last_chars.append(text)
         self.last_chars.pop(0)
         set_text = ""
@@ -313,22 +397,39 @@ class MainWindow(QMainWindow):
         self.hist_label.setStyleSheet(f"color: {color}")
 
     def exit(self):
+        '''
+        Save statistics and exit the application.
+        '''
         self.tracker_thread.save()
         self.tray_thread.icon.stop()
-        os._exit(0)
+        QApplication.quit()
+        # os._exit(0)
 
     def closeEvent(self, event):
+        '''
+        Handle the window close event, hiding or exiting as appropriate.
+
+        Args:
+            event: The close event object.
+        '''
         if self.tray_thread.success: # maybe check if the thread is running instead?
             event.ignore()
             self.hide()
         else: # if tray was not loaded exit instead of hiding.
             self.tracker_thread.save()
-            os._exit(0)
+            QApplication.quit()
+            # os._exit(0)
 
 
 def convert_keys(key):
     '''
-    Function to convert keys to an emoji representation to coolness
+    Function to convert keys to an emoji representation to coolness.
+
+    Args:
+        key (str): The key name to convert.
+
+    Returns:
+        str: The emoji or string representation of the key.
     '''
     if DO_EMOJI:
         # TODO: Add the numeric keys (0-9)

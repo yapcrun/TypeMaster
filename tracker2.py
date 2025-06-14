@@ -1,4 +1,3 @@
-
 # Loaded from tmgui
 import time
 import os
@@ -15,6 +14,9 @@ class KeyHandler:
     Class to handle key stats, apm
     '''
     def __init__(self):
+        '''
+        Initialize KeyHandler, loading key statistics and high scores, and setting up state.
+        '''
         self.key_stats = load_dict("key_stats")
         if self.key_stats == None: self.key_stats = {}
         self.apm = 0
@@ -27,57 +29,62 @@ class KeyHandler:
         if self.hiscore == None: self.hiscore = {"apm": 0, "combo": 0}
 
     def on_press(self, key):
-        # determine key type
+        '''
+        Handle a key press event.
+
+        Args:
+            key: A pynput Key object representing the pressed key.
+
+        Returns:
+            dict: Data relevant to the GUI (APM, stats, last key, combo, hiscore), or None on error.
+        '''
         actual_key = None
         combo = self.update_combo(self.last_press[1])
         try: 
             if hasattr(key, "char") and key.char is not None: # is a alpha numeric key
                 actual_key = key.char.lower()
-
             elif hasattr(key, "name"): # is mod, arrow, etc.
                 actual_key = key.name.lower()
-
             else:
                 actual_key = "౸"
                 print(f"Error identifying key\n{key.__dict__}")
-        except Exception as e:
+        except Exception as e: 
             print("Failed to determine key type\n\t{e}")
-
-        if actual_key == None: actual_key = 'alt' # Hotfix for when the user presses shift + alt. In this case the key object has no set key.
-                                                  # (this may give rise to other problems / inaccurate data if the error is caused with other combos)
-                                                  # This bug may be linux only
-        if actual_key == ":": actual_key = "semicolon" # To prevent parsing issues with key_log.txt
-        
         # Logic to prevent registering heald keys multiple times
-        if actual_key == self.last_press[0] and time.time() - self.last_press[1] < 0.09:
-            self.last_press = [actual_key, time.time()]
-            # If the key is heald return the don't update data and return old data
-            return None
-            return {"apm": self.apm,
-                    "stats": self.key_stats,
-                    "last_key": actual_key,
-                    "combo": combo,
-                    "hiscore": self.hiscore}
+        if actual_key == self.last_press[0] and time.time() - self.last_press[1] < 0.09: # If the key is the same as the last one and time since last press is < 90ms
+            self.last_press = [actual_key, time.time()] # If the key is heald don't update data 
+            return None 
 
         self.key_stats[actual_key] = self.key_stats.get(actual_key, 0) + 1 # Update stats
         self.update_apm()
         self.last_press = [actual_key, time.time()]
         self.update_hi_score()
         self.sound(actual_key)
-        print(f"Tracker: Pressed {actual_key}")
         return {"apm": self.apm,
                 "stats": sort_dict_by_value(self.key_stats),
                 "last_key": actual_key,
                 "combo": combo,
                 "hiscore": self.hiscore}
 
-    def get_apm(self):
-        return self.apm
-
     def get_key_stats(self):
+        '''
+        Get the current key statistics.
+
+        Returns:
+            dict: The key statistics dictionary.
+        '''
         return self.key_stats
     
     def update_combo(self, last_press):
+        '''
+        Update and return the current combo count based on the time since the last key press.
+
+        Args:
+            last_press (float): Timestamp of the last key press.
+
+        Returns:
+            int: The updated combo count.
+        '''
         if time.time() - last_press < 3.0:
             self.combo += 1
         else:
@@ -85,7 +92,9 @@ class KeyHandler:
         return self.combo
 
     def update_hi_score(self):
-        # hiscore not being updated !!!!
+        '''
+        Update the high score for APM and combo if the current values exceed the stored high scores.
+        '''
         if self.hiscore["apm"] < self.apm:
             self.hiscore["apm"] = self.apm
         if self.hiscore["combo"] < self.combo:
@@ -93,7 +102,13 @@ class KeyHandler:
 
     def update_apm(self, is_increasing = True):
         '''
-        Method for calculating APM
+        Calculate and update the actions per minute (APM).
+
+        Args:
+            is_increasing (bool): Whether to increment the APM counter (default: True).
+
+        Returns:
+            int: The current APM value.
         '''
         now = time.time()
 
@@ -113,16 +128,20 @@ class KeyHandler:
         self.apm = len(self.apm_times) # set the new apm value
         return self.apm
 
-    
     def save(self):
+        '''
+        Save the current key statistics and high scores to persistent storage.
+        '''
         # self.logfile("save")
         save_dict(sort_dict_by_value(self.key_stats), "key_stats")
         save_dict(self.hiscore, "hiscore")
 
-
     def sound(self, key_name):
         '''
-        
+        Play a sound corresponding to the given key name.
+
+        Args:
+            key_name (str): The name of the key pressed.
         '''
         # TODO: Find a better way to make this logic better
         # TODO: Base this off a dict/yaml/etc. that the user can edit?
@@ -143,7 +162,12 @@ class KeyHandler:
 def sort_dict_by_value(d):
     """
     Sort a dictionary by its integer values in descending order.
-    Returns a new sorted dictionary.
+
+    Args:
+        d (dict): The dictionary to sort.
+
+    Returns:
+        dict: A new dictionary sorted by value in descending order.
     """
     return dict(sorted(
         ((k, v) for k, v in d.items() if isinstance(v, int)),
