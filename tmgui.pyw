@@ -269,14 +269,11 @@ class MainWindow(QMainWindow):
 
     def update_apm(self, apm):
         self.apm_label.setText(f"{apm}")
-        # Set text color & size based on apm
-        # TODO: Make this change linearly from rgb(0,255,0) to rgb(255,0,0) so max apm is 255
-        if apm in range(0,89):
-            self.apm_label.setStyleSheet("color: green; font-size: 24px;")
-        elif apm in range(90, 174):
-            self.apm_label.setStyleSheet("color: yellow; font-size: 30px;")
-        elif apm > 175:
-            self.apm_label.setStyleSheet("color: red; font-size: 34px;")
+        if apm < 255: # if apm not past the max red value
+            color = f"rgb({apm}, {255-apm}, 0)" # (apm reduces green and increases red up to 255)
+        else:
+            color = "rgb(255, 0, 0)"
+        self.apm_label.setStyleSheet(f"color: {color}; font-size: 24px;")
 
     def update_combo(self, combo):
         self.apm_combo_label.setText(f"{combo}")
