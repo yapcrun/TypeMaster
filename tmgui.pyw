@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt6.QtWidgets import QComboBox, QApplication, QWidget, QPushButton, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QListWidget, QCheckBox
-from PyQt6.QtGui import QIcon, QFontDatabase, QFont
+from PyQt6.QtWidgets import QComboBox, QApplication, QWidget, QPushButton, QMainWindow, QLabel, QVBoxLayout, QHBoxLayout, QListWidget, QCheckBox, QListWidgetItem
+from PyQt6.QtGui import QIcon, QFontDatabase, QFont, QColor
 import sys
 from pynput import keyboard
 from random import randint
@@ -14,11 +14,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 DO_EMOJI = False # Enable emoji output
 
-# TODO: Make the list fancy
-# TODO: Add a WPM counter
+# TODO: Add a WPM counter?
 # TODO: research graph support (https://www.pyqtgraph.org/)
-# TODO: Color combo
-# TODO: Unify the signals down to one?
 # TODO: Add a settings/info window
 
 
@@ -84,7 +81,7 @@ class TrackerThread(QThread):
     QThread object that runs the keyboard event listener, plays audio and returns data relevent to the gui
     '''
     apm_signal = pyqtSignal(int)
-    stats_list_signal = pyqtSignal(dict)
+    stats_list_signal = pyqtSignal(dict, str)
     last_key_signal = pyqtSignal(str)
     combo_signal = pyqtSignal(int)
     hi_score_signal = pyqtSignal(dict)
@@ -124,7 +121,7 @@ class TrackerThread(QThread):
         combo = data["combo"]
         hi_score = data["hiscore"]
         self.apm_signal.emit(apm)
-        self.stats_list_signal.emit(stats)
+        self.stats_list_signal.emit(stats, last_key)
         self.last_key_signal.emit(last_key)
         self.combo_signal.emit(combo)
         self.hi_score_signal.emit((hi_score))
@@ -160,7 +157,8 @@ class TrackerThread(QThread):
         '''
         Start the keyboard listener and process key events in a loop.
         '''
-        self.stats_list_signal.emit(self.tracker.get_key_stats())
+        self.stats_list_signal.emit(self.tracker.get_key_stats(), "None")
+        self.hi_score_signal.emit(self.tracker.hiscore)
         print("Tracker thread started.")
         while self.running:
             with keyboard.Listener(
@@ -281,7 +279,7 @@ class MainWindow(QMainWindow):
         self.controls_layout.addWidget(self.aot_toggle, 0)
         # Mute Toggle
         self.mute_toggle = QCheckBox(text="mute")
-        self.mute_toggle.stateChanged.connect(self.toggle_mute) # --------------------------------------------------------------------------------
+        self.mute_toggle.stateChanged.connect(self.toggle_mute)
         self.controls_layout.addWidget(self.mute_toggle, 0)
         # Add Horizontal controls layout
         self.layout.addLayout(self.controls_layout)
@@ -344,7 +342,7 @@ class MainWindow(QMainWindow):
         '''
         self.hi_score_label.setText(f"Hi-Scores\nAPM: [{combo['apm']}]\nCOMBO: [{combo['combo']}]")
 
-    def populate_list(self, data: dict):
+    def populate_list(self, data: dict, last_key: str):
         '''
         Populate the key statistics list widget with updated data.
 
@@ -353,7 +351,12 @@ class MainWindow(QMainWindow):
         '''
         self.key_stats.clear()
         for key, taps in data.items():
-            self.key_stats.addItem(f"{convert_keys(key)}: {taps}")
+            if key == last_key:
+                item = QListWidgetItem(f"{convert_keys(key)}: {taps}")
+                item.setBackground(QColor("green"))
+                self.key_stats.addItem(item)
+            else:
+                self.key_stats.addItem(f"{convert_keys(key)}: {taps}")
 
     def toggle_mute(self):
         '''
@@ -429,7 +432,6 @@ def convert_keys(key):
         str: The emoji or string representation of the key.
     '''
     if DO_EMOJI:
-        # TODO: Add the numeric keys (0-9)
         if key == "backspace": return "🗑️"
         elif key == "delete": return "🕳️"
         elif key == "enter": return "↩️"
@@ -444,7 +446,17 @@ def convert_keys(key):
         elif key == "media_previous": return "⏮️"
         elif key == "caps_lock": return "🔒"
         elif key == "space": return "☄️"
-        # elif key == "shift": return 
+        elif key == "1": return "1️⃣"
+        elif key == "2": return "2️⃣"
+        elif key == "3": return "3️⃣"
+        elif key == "4": return "4️⃣"
+        elif key == "5": return "5️⃣"
+        elif key == "6": return "6️⃣"
+        elif key == "7": return "7️⃣"
+        elif key == "8": return "8️⃣"
+        elif key == "9": return "9️⃣"
+        elif key == "0": return "0️⃣"
+        # elif key == "shift": return
         # elif key == "shift_r": return
         # elif key == "ctrl": return
         # elif key == "ctrl_r": return
