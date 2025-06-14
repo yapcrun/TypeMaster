@@ -1,9 +1,8 @@
+
+# Loaded from tracker2
 import os
 from random import choice
-import threading
-import subprocess
 from pygame import mixer
-if os.name == 'nt': import winsound  # Only available on Windows
 
 
 DEBUG = False
