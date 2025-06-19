@@ -9,10 +9,11 @@ import tracker2
 from load_dict import load_dict, save_dict
 
 
-# Set cwd to make sure paths are correct
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+# TODO: Make these CONSTs load from a config file
 DO_EMOJI = False # Enable emoji output
+START_ON_TOP = False 
 
 # TODO: Add a WPM counter?
 # TODO: research graph support (https://www.pyqtgraph.org/)
@@ -94,6 +95,7 @@ class TrackerThread(QThread):
         self.tracker = tracker2.KeyHandler()
         self.need_update = False # Is there new data to save?
         self.config = load_dict(".config")
+        self.key_press_history = [""]*3
         if self.config == None: self.config = {"soundpack": "default"} # If there is no config file reset it
         self.pack = self.config["soundpack"] # Get the name of the last used pack
         # TODO: Handle the case where the DEFAULT sound pack is missing
@@ -126,6 +128,7 @@ class TrackerThread(QThread):
         self.combo_signal.emit(combo)
         self.hi_score_signal.emit((hi_score))
         self.need_update = True
+        self.press_history(last_key)
 
     def update_apm(self):
         '''
@@ -152,6 +155,16 @@ class TrackerThread(QThread):
         self.tracker.sounds.load_sounds(pack)
         self.config["soundpack"] = pack
         save_dict(self.config, ".config")
+
+    def press_history(self, key):
+        '''
+        Update the key_press_history with recent key
+
+        Args:
+            key (str): Name of the key to add to the list
+        '''
+        self.key_press_history.append(key)
+        self.key_press_history.pop(0)
 
     def run(self):
         '''
@@ -202,6 +215,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("TypeMaster")
         self.setGeometry(100, 100, 300, 700)
         self.setWindowIcon(QIcon("COMP_ICON.png"))
+        if START_ON_TOP:
+            self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
 
         # Tracker Thread Setup
         self.tracker_thread = TrackerThread()
@@ -275,6 +290,8 @@ class MainWindow(QMainWindow):
         self.controls_layout.addWidget(self.sound_pack_combo, 1)
         # AOT Toggle
         self.aot_toggle = QCheckBox(text="On Top")
+        if START_ON_TOP:
+            self.aot_toggle.setChecked(True)
         self.aot_toggle.stateChanged.connect(self.toggle_always_on_top)
         self.controls_layout.addWidget(self.aot_toggle, 0)
         # Mute Toggle
@@ -350,10 +367,18 @@ class MainWindow(QMainWindow):
             data (dict): Dictionary of key statistics.
         '''
         self.key_stats.clear()
+        keys_to_color = self.tracker_thread.key_press_history
         for key, taps in data.items():
-            if key == last_key:
+            if key in keys_to_color:
+                color = keys_to_color.index(key)
+                if color == 0: # least recent
+                    color = QColor("red")
+                elif color == 1:
+                    color = QColor("yellow")
+                elif color == 2: # most recent
+                    color = QColor("green")
                 item = QListWidgetItem(f"{convert_keys(key)}: {taps}")
-                item.setBackground(QColor("green"))
+                item.setBackground(color)
                 self.key_stats.addItem(item)
             else:
                 self.key_stats.addItem(f"{convert_keys(key)}: {taps}")
