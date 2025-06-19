@@ -15,7 +15,7 @@ TypeMaster is a cross-platform, GUI, Python-based typing enhancer that plays sou
 
 - `tmgui.pyw`: The main entry point to the application.
 - `sounds/`: Directory containing sound packs. Each pack has subdirectories for key sounds based on their category.
-- `key_log`: Json file where key press counts are logged.
+- `key_stats`: Json file where key press counts are logged.
 
 
 ## Requirements
@@ -49,4 +49,4 @@ sudo apt-get install libxcb-xinerama0 libxcb-xinerama0-dev libxcb-cursor0
 ## Known Issues
 
 - Linux tray icon will not work correctly if operating in a venv
-- Display freezes when operating in a venv
+- Window manager freezes if operating in a venv
